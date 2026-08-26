@@ -58,12 +58,12 @@ export function StarredList({
   }
 
   return (
-    <div className="py-2" data-testid="starred-section">
+    <div className="py-2 px-2" data-testid="starred-section">
       <button
         type="button"
         data-testid="starred-section-header"
         onClick={() => setCollapsed((prev) => !prev)}
-        className="group w-full px-4 py-1 text-[13px] text-gray-400 font-semibold flex items-center justify-between hover:bg-white/10 rounded-sm bg-transparent border-none cursor-pointer text-left"
+        className="group w-full px-2 py-1 text-[13px] text-gray-400 font-semibold flex items-center justify-between hover:bg-white/10 rounded-md bg-transparent border-none cursor-pointer text-left"
       >
         <span className="flex items-center gap-1">
           {/* Star icon (default) */}
@@ -101,7 +101,7 @@ export function StarredList({
                 onContextMenu={(e) => handleContextMenu(e, channel.id)}
                 data-testid={`starred-channel-${channel.id}`}
                 className={clsx(
-                  "flex w-full items-center justify-between py-1 pl-6 pr-4 border-none text-white text-left cursor-pointer text-sm",
+                  "flex w-full items-center justify-between py-1 pl-4 pr-2 rounded-md border-none text-white text-left cursor-pointer text-sm",
                   activeChannelId === channel.id
                     ? "bg-white/15"
                     : "bg-transparent hover:bg-white/10",
@@ -144,7 +144,7 @@ export function StarredList({
                 onClick={() => onSelectDm(dm.channel.id)}
                 data-testid={`starred-dm-${dm.channel.id}`}
                 className={clsx(
-                  "flex w-full items-center justify-between py-1 pl-6 pr-4 border-none text-white text-left cursor-pointer text-sm",
+                  "flex w-full items-center justify-between py-1 pl-4 pr-2 rounded-md border-none text-white text-left cursor-pointer text-sm",
                   activeDmId === dm.channel.id
                     ? "bg-white/15"
                     : "bg-transparent hover:bg-white/10",

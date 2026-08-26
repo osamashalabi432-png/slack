@@ -53,12 +53,12 @@ export function ChannelList({
   const pref = contextMenuChannelId ? channelNotificationPrefs?.[contextMenuChannelId] : undefined;
 
   return (
-    <div className="py-2">
+    <div className="py-2 px-2">
       <button
         type="button"
         data-testid="channels-section-header"
         onClick={onToggleCollapsed}
-        className="group w-full px-4 py-1 text-[13px] text-gray-400 font-semibold flex items-center justify-between hover:bg-white/10 rounded-sm bg-transparent border-none cursor-pointer text-left"
+        className="group w-full px-2 py-1 text-[13px] text-gray-400 font-semibold flex items-center justify-between hover:bg-white/10 rounded-md bg-transparent border-none cursor-pointer text-left"
       >
         <span className="flex items-center gap-1">
           {/* Hash icon (default) */}
@@ -108,7 +108,7 @@ export function ChannelList({
               onClick={() => onSelectChannel(channel.id)}
               onContextMenu={(e) => handleContextMenu(e, channel.id)}
               className={clsx(
-                "flex w-full items-center justify-between py-1 pl-6 pr-4 border-none text-white text-left cursor-pointer text-sm",
+                "flex w-full items-center justify-between py-1 pl-4 pr-2 rounded-md border-none text-white text-left cursor-pointer text-sm",
                 activeChannelId === channel.id
                   ? "bg-white/15"
                   : "bg-transparent hover:bg-white/10",
@@ -152,7 +152,7 @@ export function ChannelList({
           type="button"
           data-testid="browse-channels-button"
           onClick={onBrowseChannels}
-          className="flex w-full items-center gap-1.5 py-1 pl-6 pr-4 border-none bg-transparent text-gray-400 hover:bg-white/10 hover:text-white cursor-pointer text-sm text-left"
+          className="flex w-full items-center gap-1.5 py-1 pl-4 pr-2 rounded-md border-none bg-transparent text-gray-400 hover:bg-white/10 hover:text-white cursor-pointer text-sm text-left"
         >
           <Plus className="w-3.5 h-3.5" />
           Add channels

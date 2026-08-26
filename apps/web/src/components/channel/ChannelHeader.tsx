@@ -45,6 +45,8 @@ interface ChannelHeaderProps {
   onAddBookmark?: () => void;
   hasBookmarks?: boolean;
   onLeaveChannel?: () => void;
+  /** Tab strip rendered under the title row. */
+  tabsSlot?: React.ReactNode;
 }
 
 export function ChannelHeader({
@@ -78,6 +80,7 @@ export function ChannelHeader({
   onAddBookmark,
   hasBookmarks,
   onLeaveChannel,
+  tabsSlot,
 }: ChannelHeaderProps) {
   const [membersOpen, setMembersOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -114,7 +117,8 @@ export function ChannelHeader({
   }
 
   return (
-    <div className="px-4 py-3 border-b border-border-default min-h-[52px] flex items-center justify-between">
+    <div className="border-b border-border-default shrink-0">
+      <div className="px-4 pt-2 pb-1 min-h-[42px] flex items-center justify-between">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         {onToggleStar && (
           <Tooltip content={isStarred ? "Unstar channel" : "Star channel"}>
@@ -122,13 +126,13 @@ export function ChannelHeader({
               type="button"
               data-testid="star-channel-button"
               onClick={onToggleStar}
-              className="bg-transparent border border-border-default rounded cursor-pointer p-0.5 text-lg leading-none hover:scale-110 transition-transform"
+              className="bg-transparent border-none rounded p-1 cursor-pointer leading-none hover:bg-surface-tertiary transition-colors"
               aria-label={isStarred ? "Unstar channel" : "Star channel"}
             >
               {isStarred ? (
-                <Star className="w-5 h-5 text-yellow-400" fill="currentColor" />
+                <Star className="w-[18px] h-[18px] text-yellow-400" fill="currentColor" />
               ) : (
-                <Star className="w-5 h-5 text-faint hover:text-yellow-400" />
+                <Star className="w-[18px] h-[18px] text-muted hover:text-yellow-400" />
               )}
             </button>
           </Tooltip>
@@ -210,14 +214,10 @@ export function ChannelHeader({
                 type="button"
                 data-testid="channel-member-count"
                 onClick={() => setMembersOpen(true)}
-                className="relative w-8 h-8 flex items-center justify-center rounded-md border border-border-default text-muted hover:bg-surface-tertiary hover:border-border-strong hover:text-primary transition-all cursor-pointer bg-transparent"
+                className="h-7 px-2 flex items-center gap-1.5 rounded-md border border-border-default text-secondary hover:bg-surface-tertiary transition-all cursor-pointer bg-transparent text-[13px]"
               >
-                <Users className="w-[18px] h-[18px]" />
-                {memberCount > 0 && (
-                  <span className="absolute -bottom-0.5 -right-0.5 text-[9px] bg-slaq-blue text-white rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5 leading-none font-medium">
-                    {memberCount}
-                  </span>
-                )}
+                <Users className="w-[15px] h-[15px]" />
+                {memberCount > 0 && <span className="font-medium leading-none">{memberCount}</span>}
               </button>
           </Tooltip>
           <ChannelMembersDialog
@@ -420,6 +420,9 @@ export function ChannelHeader({
         </Dialog>
       )}
       </div>
+      </div>
+
+      {tabsSlot}
     </div>
   );
 }
