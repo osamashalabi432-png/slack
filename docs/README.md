@@ -9,6 +9,7 @@ This folder is organized by lifecycle so active planning stays clean and complet
 - [Active Integrations Backlog](./active/backlog-integrations.md)
 - [Mobile Dev Notes](./dev-notes/mobile.md)
 - [Mobile UI Variant Testing](./dev-notes/mobile-ui-variants.md)
+- [Hosting OpenSlaq on one PC](./self-hosting-lan.md)
 
 ## Structure
 

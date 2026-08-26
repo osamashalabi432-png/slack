@@ -10,6 +10,9 @@ const envSchema = z.object({
   VITE_STACK_PUBLISHABLE_CLIENT_KEY: z.string().optional(),
   PORT: z.coerce.number().optional(),
   API_PORT: z.coerce.number().default(3001),
+  // Behind a TLS front this is pinned to 127.0.0.1, so the API is reachable
+  // only through the proxy rather than over plain HTTP on every interface.
+  API_HOST: z.string().default("0.0.0.0"),
   API_ARTIFICIAL_DELAY_MS: z.coerce.number().int().nonnegative().default(0),
   CORS_ORIGIN: z.string().default("http://localhost:3000")
     .transform((s) => s.split(",").map((o) => o.trim())),

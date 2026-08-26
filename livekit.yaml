@@ -1,8 +1,14 @@
 port: 7880
 rtc:
-  port_range_start: 50000
-  port_range_end: 60000
+  # Single-port UDP mux instead of a 10k range: only this one port has to be
+  # published, and it is mapped 1:1 so the port in ICE candidates matches the
+  # port reachable on the host.
+  udp_port: 7882
+  tcp_port: 7881
   use_external_ip: false
+  # Without this LiveKit advertises its container address (172.x), which the
+  # host cannot reach, and ICE fails with "could not establish pc connection".
+  node_ip: 127.0.0.1
 keys:
   devkey: devsecret
 room:
