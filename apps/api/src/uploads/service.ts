@@ -2,6 +2,8 @@ import { eq, and, isNull, isNotNull, or, inArray, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { db } from "../db";
 import { attachments } from "./schema";
+import { canReadPage } from "../pages/service";
+import { asPageId, asUserId } from "@openslaq/shared";
 
 export const MAX_STORAGE_PER_USER_BYTES = 1_073_741_824; // 1 GB
 
@@ -28,6 +30,7 @@ function sanitizeFilename(name: string): string {
 export async function createAttachment(
   file: { name: string; type: string; bytes: Uint8Array },
   userId: string,
+  pageId?: string,
 ) {
   // Convert HEIC/HEIF to JPEG for cross-platform compatibility (Chrome/Firefox can't render HEIC)
   if (file.type === "image/heic" || file.type === "image/heif") {
@@ -51,6 +54,7 @@ export async function createAttachment(
       mimeType: file.type,
       size: file.bytes.length,
       uploadedBy: userId,
+      pageId: pageId ?? null,
     })
     .returning();
 
@@ -108,9 +112,16 @@ export async function deleteAttachmentsForMessage(messageId: string, tx: Tx = db
 }
 
 export async function canAccessAttachment(
-  attachment: { messageId: string | null; uploadedBy: string | null },
+  attachment: { messageId: string | null; pageId?: string | null; uploadedBy: string | null },
   userId: string,
 ): Promise<boolean> {
+  // A file in a page body is read by whoever can read the page — otherwise an
+  // image pasted into a shared canvas would only ever load for the person who
+  // pasted it.
+  if (attachment.pageId) {
+    return await canReadPage(asPageId(attachment.pageId), asUserId(userId));
+  }
+
   if (!attachment.messageId) {
     return attachment.uploadedBy === userId;
   }

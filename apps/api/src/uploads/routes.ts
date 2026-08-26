@@ -7,7 +7,9 @@ import { MAX_FILE_SIZE, MAX_FILES_PER_REQUEST, isAllowedMimeType } from "./valid
 import { rlFileUpload } from "../rate-limit";
 import { uploadResponseSchema, errorSchema } from "../openapi/schemas";
 import { jsonResponse } from "../openapi/responses";
-import { BadRequestError } from "../errors";
+import { BadRequestError, ForbiddenError } from "../errors";
+import { canReadPage } from "../pages/service";
+import { asPageId, asUserId } from "@openslaq/shared";
 
 const uploadRoute = createRoute({
   method: "post",
@@ -23,6 +25,10 @@ const uploadRoute = createRoute({
         "multipart/form-data": {
           schema: z.object({
             files: z.any().describe("File(s) to upload"),
+            pageId: z
+              .string()
+              .optional()
+              .describe("Page these files belong to, for files dropped into a page body"),
           }),
         },
       },
@@ -31,6 +37,7 @@ const uploadRoute = createRoute({
   responses: {
     201: jsonContent(uploadResponseSchema, "Uploaded attachments"),
     400: jsonContent(errorSchema, "Validation error"),
+    403: jsonContent(errorSchema, "No access to that page"),
   },
 });
 
@@ -41,6 +48,14 @@ const app = new OpenAPIHono().openapi(uploadRoute, async (c) => {
   const rawFiles = body["files"];
   if (!rawFiles) {
     throw new BadRequestError("No files provided");
+  }
+
+  // A file dropped into a page body belongs to that page, so everyone who can
+  // read the page can see it.
+  const rawPageId = body["pageId"];
+  const pageId = typeof rawPageId === "string" && rawPageId ? rawPageId : undefined;
+  if (pageId && !(await canReadPage(asPageId(pageId), asUserId(user.id)))) {
+    throw new ForbiddenError("You do not have access to that page");
   }
 
   const files = Array.isArray(rawFiles) ? rawFiles : [rawFiles];
@@ -75,7 +90,7 @@ const app = new OpenAPIHono().openapi(uploadRoute, async (c) => {
   const results = await Promise.all(
     fileObjects.map(async (file) => {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      return createAttachment({ name: file.name, type: file.type, bytes }, user.id);
+      return createAttachment({ name: file.name, type: file.type, bytes }, user.id, pageId);
     }),
   );
 

@@ -1,0 +1,161 @@
+/* Notion-style document surface for channel canvases. */
+
+.canvas-doc {
+  outline: none;
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.7;
+  caret-color: var(--text-primary);
+}
+
+/*
+ * The message composer styles bare .tiptap with a 200px cap and its own
+ * padding. A canvas is a full document, so undo those here — the extra
+ * class keeps this more specific than the composer rule.
+ */
+.tiptap.canvas-doc {
+  max-height: none;
+  min-height: 320px;
+  overflow: visible;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.canvas-doc > * + * {
+  margin-top: 0.4em;
+}
+
+.canvas-doc h1,
+.canvas-doc h2,
+.canvas-doc h3 {
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.canvas-doc h1 {
+  font-size: 1.85em;
+  margin-top: 1.2em;
+}
+
+.canvas-doc h2 {
+  font-size: 1.45em;
+  margin-top: 1.1em;
+}
+
+.canvas-doc h3 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.canvas-doc ul,
+.canvas-doc ol {
+  padding-left: 1.5em;
+}
+
+.canvas-doc ul {
+  list-style: disc;
+}
+
+.canvas-doc ol {
+  list-style: decimal;
+}
+
+.canvas-doc li p {
+  margin: 0;
+}
+
+.canvas-doc blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 0.9em;
+  color: var(--text-secondary);
+}
+
+.canvas-doc hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 1.4em 0;
+}
+
+.canvas-doc code {
+  background: var(--code-inline-bg);
+  border-radius: 4px;
+  padding: 0.15em 0.35em;
+  font-size: 0.87em;
+}
+
+.canvas-doc pre {
+  background: var(--code-bg, #282c34);
+  border-radius: 8px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  font-size: 0.87em;
+  line-height: 1.5;
+}
+
+.canvas-doc pre code {
+  background: none;
+  padding: 0;
+}
+
+.canvas-doc a {
+  color: var(--color-slaq-blue, #1264a3);
+  text-decoration: underline;
+}
+
+/* Checkbox lists */
+.canvas-doc ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+.canvas-doc ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55em;
+}
+
+.canvas-doc ul[data-type="taskList"] li > label {
+  margin-top: 0.35em;
+  user-select: none;
+}
+
+.canvas-doc ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.canvas-doc ul[data-type="taskList"] li input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--color-slaq-blue, #1264a3);
+}
+
+.canvas-doc ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* Empty-node placeholders */
+.canvas-doc p.is-editor-empty:first-child::before,
+.canvas-doc h1.is-empty::before,
+.canvas-doc h2.is-empty::before,
+.canvas-doc h3.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.canvas-database-node {
+  margin: 0.75em 0;
+}
+
+.canvas-database-node ul,
+.canvas-database-node ol {
+  list-style: none;
+  padding-left: 0;
+}
