@@ -7,7 +7,7 @@ import type { ChannelType } from "./constants";
 export interface Mention {
   userId: UserId;
   displayName: string;
-  type: "user" | "here" | "channel";
+  type: "user" | "here" | "channel" | "group";
 }
 
 export interface HuddleMessageMetadata {

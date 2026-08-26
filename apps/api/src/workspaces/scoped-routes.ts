@@ -9,6 +9,8 @@ import { ROLES } from "@openslaq/shared";
 import channelRoutes from "../channels/routes";
 import channelMessageRoutes from "../messages/channel-routes";
 import memberRoutes from "./member-routes";
+import userGroupRoutes from "../groups/routes";
+import pageRoutes from "../pages/routes";
 import dmRoutes from "../dm/routes";
 import inviteRoutes from "./invite-routes";
 import unreadRoutes from "../channels/unread-routes";
@@ -24,6 +26,9 @@ import threadRoutes from "../messages/thread-routes";
 import fileBrowserRoutes from "../uploads/file-browser-routes";
 import customEmojiRoutes from "../emoji/routes";
 import bookmarkRoutes from "../channels/bookmark-routes";
+import tabRoutes from "../channels/tab-routes";
+import canvasDatabaseRoutes from "../channels/canvas-database-routes";
+import savedFolderItemRoutes from "../channels/saved-folder-item-routes";
 import commandRoutes from "../commands/routes";
 import marketplaceInstallRoutes from "../marketplace/install-routes";
 import { INTEGRATION_PLUGINS } from "../integrations/registry";
@@ -78,7 +83,11 @@ const routes = app
   .route("/channels", channelRoutes)
   .route("/channels", channelMessageRoutes)
   .route("/channels", bookmarkRoutes)
+  .route("/channels", tabRoutes)
+  .route("/channels", canvasDatabaseRoutes)
   .route("/members", memberRoutes)
+  .route("/groups", userGroupRoutes)
+  .route("/pages", pageRoutes)
   .route("/dm", dmRoutes)
   .route("/invites", inviteRoutes)
   .route("/unread-counts", unreadRoutes)
@@ -87,6 +96,7 @@ const routes = app
   .route("/search", searchRoutes)
   .route("/group-dm", groupDmRoutes)
   .route("/saved-messages", savedMessageRoutes)
+  .route("/saved-files", savedFolderItemRoutes)
   .route("/scheduled-messages", scheduledMessageRoutes)
   .route("/drafts", draftRoutes)
   .route("/threads", threadRoutes)

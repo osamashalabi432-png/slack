@@ -112,6 +112,28 @@ export type { FetchFilesParams, FetchFilesResult } from "./files";
 export { fetchCustomEmojis, uploadCustomEmoji, deleteCustomEmoji } from "./emoji";
 export { fetchBookmarks, addBookmarkOp, removeBookmarkOp } from "./bookmarks";
 export {
+  fetchTabs,
+  fetchCanvasContent,
+  createTabOp,
+  renameTabOp,
+  saveCanvasOp,
+  deleteTabOp,
+} from "./tabs";
+export {
+  createDatabaseOp,
+  fetchDatabase,
+  updateDatabaseOp,
+  createDatabaseRowOp,
+  updateDatabaseRowOp,
+  deleteDatabaseRowOp,
+} from "./canvas-databases";
+export {
+  fetchSavedItemIds,
+  saveFolderItemOp,
+  unsaveFolderItemOp,
+  fetchSavedFolderItems,
+} from "./folder-items";
+export {
   registerPushToken,
   unregisterPushToken,
   registerVoipToken,
@@ -136,3 +158,29 @@ export {
   updateAdminFeatureFlags,
   bulkUpdateFeatureFlag,
 } from "./admin-feature-flags";
+
+export {
+  fetchUserGroups,
+  fetchUserGroup,
+  fetchGroupSections,
+  createUserGroup,
+  updateUserGroup,
+  deleteUserGroup,
+  addUserGroupMembers,
+  removeUserGroupMember,
+  addUserGroupChannels,
+  removeUserGroupChannel,
+} from "./user-groups";
+
+export {
+  fetchPages,
+  fetchPage,
+  createPageOp,
+  updatePageOp,
+  movePageOp,
+  archivePageOp,
+  favouritePageOp,
+  buildPageTree,
+  ensureTabPageOp,
+} from "./pages";
+export type { PageNode } from "./pages";

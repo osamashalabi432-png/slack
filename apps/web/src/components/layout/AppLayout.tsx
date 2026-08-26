@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
+import { WorkspaceRail } from "./WorkspaceRail";
+import { TopBar } from "./TopBar";
+import { InviteDialog } from "../settings/InviteDialog";
+import { WorkspaceSettingsDialog } from "../settings/WorkspaceSettingsDialog";
 import { ResizeHandle } from "./ResizeHandle";
 import { UpdateBanner } from "../update/UpdateBanner";
 import { MessageList } from "../message/MessageList";
 import { MessageInput, type MessageInputHandle } from "../message/MessageInput";
 import { TypingIndicator } from "../message/TypingIndicator";
 import { ChannelHeader } from "../channel/ChannelHeader";
+import { ChannelTabs } from "../channel/ChannelTabs";
+import { CanvasView } from "../canvas/CanvasView";
+import { DirectoryView } from "../directory/DirectoryView";
+import { useUserGroups } from "../../hooks/chat/useUserGroups";
+import { HuddleDock } from "../huddle/HuddleDock";
+import { FolderView } from "../folder/FolderView";
+import { useTabActions } from "../../hooks/chat/useTabActions";
+import { useTabTracking } from "../../hooks/chat/useTabTracking";
 import { DmHeader } from "../dm/DmHeader";
 import { ThreadPanel } from "../message/ThreadPanel";
 import { UserProfileSidebar } from "../profile/UserProfileSidebar";
@@ -74,8 +86,17 @@ export function AppLayout() {
   const popovers = useChannelPopovers(workspaceSlug);
 
   const [searchOpen, setSearchOpen] = useState(false);
+  // Huddles render docked in this window rather than a separate webview.
+  const [dockedHuddle, setDockedHuddle] = useState<{ channelId: string; channelName: string } | null>(
+    null,
+  );
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [workspaceSettingsOpen, setWorkspaceSettingsOpen] = useState(false);
   const huddleActions = useHuddleActions();
+  const tabActions = useTabActions(workspaceSlug, activeChannel?.id);
+
+  useTabTracking();
   const mainContentRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<MessageInputHandle>(null);
 
@@ -209,6 +230,16 @@ export function AppLayout() {
     dispatch({ type: "workspace/selectFilesView" });
   }, [dispatch]);
 
+  const userGroups = useUserGroups(slug);
+
+  const handleSelectDirectoryView = useCallback(() => {
+    dispatch({ type: "workspace/selectDirectoryView" });
+  }, [dispatch]);
+
+  const handleSelectHome = useCallback(() => {
+    dispatch({ type: "workspace/selectChannel", channelId: state.activeChannelId ?? state.channels[0]?.id ?? "" });
+  }, [dispatch, state.activeChannelId, state.channels]);
+
   const handleSelectComposeView = useCallback(() => {
     dispatch({ type: "workspace/selectComposeView" });
   }, [dispatch]);
@@ -245,27 +276,66 @@ export function AppLayout() {
   );
 
   const handleStartHuddle = useCallback(
-    (channelId: string, channelName?: string) => {
-      huddleActions.startHuddle(channelId, channelName);
+    (channelId: string, channelName?: string, video?: boolean) => {
+      huddleActions.startHuddle(channelId, channelName, { video, inline: true });
+      setDockedHuddle({ channelId, channelName: channelName ?? "Huddle" });
     },
     [huddleActions],
   );
 
   const handleJoinHuddle = useCallback(
     (channelId: string, channelName?: string) => {
-      huddleActions.joinHuddle(channelId, channelName);
+      huddleActions.joinHuddle(channelId, channelName, { inline: true });
+      setDockedHuddle({ channelId, channelName: channelName ?? "Huddle" });
     },
     [huddleActions],
   );
+
+  const handleLeaveHuddle = useCallback(() => {
+    huddleActions.leaveHuddle();
+    setDockedHuddle(null);
+  }, [huddleActions]);
+
+  const unreadTotal = Object.entries(state.unreadCounts)
+    .filter(([id]) => state.channelNotificationPrefs[id] !== "muted")
+    .reduce((sum, [, count]) => sum + count, 0);
+
+  const activeTab =
+    state.activeTabId !== null
+      ? (tabActions.tabs.find((t) => t.id === state.activeTabId) ?? null)
+      : null;
+  const activeCanvasTab = activeTab?.type === "canvas" ? activeTab : null;
+  const activeFolderTab = activeTab?.type === "folder" ? activeTab : null;
 
   const currentUserId = user?.id ?? "";
   const currentWorkspace = state.workspaces.find((ws) => ws.slug === workspaceSlug);
   const canManage = currentWorkspace?.role === "owner" || currentWorkspace?.role === "admin";
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-rail">
       <UpdateBanner />
+      <TopBar
+        workspaceName={currentWorkspace?.name ?? slug}
+        onOpenSearch={() => setSearchOpen(true)}
+        onToggleSidebar={() => setSidebarVisible((v) => !v)}
+        onSelectOutboxView={handleSelectOutboxView}
+      />
       <div className="flex flex-1 min-h-0">
+      <WorkspaceRail
+        workspaces={state.workspaces}
+        workspaceSlug={slug}
+        activeView={state.activeView}
+        unreadTotal={unreadTotal}
+        canManage={canManage}
+        onSelectHome={handleSelectHome}
+        onSelectComposeView={handleSelectComposeView}
+        onSelectUnreadsView={handleSelectUnreadsView}
+        onSelectFilesView={handleSelectFilesView}
+        onSelectSavedView={handleSelectSavedView}
+        onSelectOutboxView={handleSelectOutboxView}
+        onOpenInvite={() => setInviteOpen(true)}
+        onOpenWorkspaceSettings={() => setWorkspaceSettingsOpen(true)}
+      />
       {sidebarVisible && !state.ui.bootstrapError && (
         <>
           <Sidebar
@@ -282,19 +352,19 @@ export function AppLayout() {
             workspaceSlug={slug}
             workspaces={state.workspaces}
             unreadCounts={state.unreadCounts}
+            onSelectDirectoryView={handleSelectDirectoryView}
+            groupSections={userGroups.sections}
             presence={state.presence}
-            onOpenSearch={() => setSearchOpen(true)}
             onChannelCreated={channelActions.onChannelCreated}
             activeHuddles={state.activeHuddles}
             starredChannelIds={state.starredChannelIds}
             channelNotificationPrefs={state.channelNotificationPrefs}
             onSetNotificationLevel={channelActions.setNotificationLevel}
             activeView={state.activeView}
-            onSelectUnreadsView={handleSelectUnreadsView}
-            onSelectSavedView={handleSelectSavedView}
-            onSelectOutboxView={handleSelectOutboxView}
-            onSelectFilesView={handleSelectFilesView}
             onSelectComposeView={handleSelectComposeView}
+            onOpenInvite={() => setInviteOpen(true)}
+            onOpenWorkspaceSettings={() => setWorkspaceSettingsOpen(true)}
+            onJoinHuddle={handleJoinHuddle}
             style={{ width: leftResize.width }}
           />
           <ResizeHandle
@@ -305,6 +375,7 @@ export function AppLayout() {
         </>
       )}
 
+      <div className="flex flex-1 min-w-0 min-h-0 mr-2 mb-2 rounded-lg overflow-hidden border border-border-default bg-surface">
       <div ref={mainContentRef} className="flex-1 min-w-0 flex flex-col bg-surface relative" data-testid="main-content">
         <ConnectionBanner />
         {state.ui.bootstrapError ? (
@@ -380,6 +451,17 @@ export function AppLayout() {
               }
             }}
           />
+        ) : state.activeView === "directory" ? (
+          <DirectoryView
+            workspaceSlug={slug}
+            canManage={canManage}
+            currentUserId={currentUserId}
+            presence={state.presence}
+            groupActions={userGroups}
+            onOpenInvite={() => setInviteOpen(true)}
+            onOpenDm={handleSelectDm}
+            onSelectChannel={handleSelectChannel}
+          />
         ) : state.activeView === "files" ? (
           <FilesView
             workspaceSlug={slug}
@@ -443,6 +525,19 @@ export function AppLayout() {
               onAddBookmark={popovers.openAddBookmark}
               hasBookmarks={(state.channelBookmarks[activeChannel.id] ?? []).length > 0}
               onLeaveChannel={channelActions.leaveChannel}
+              tabsSlot={
+                <ChannelTabs
+                  tabs={tabActions.tabs}
+                  activeTabId={state.activeTabId}
+                  onSelectTab={tabActions.selectTab}
+                  onCreateTab={(type) =>
+                    void tabActions.createTab(type, type === "folder" ? "Folder" : "Canvas")
+                  }
+                  onRenameTab={(tabId, name) => void tabActions.renameTab(tabId, name)}
+                  onDeleteTab={(tabId) => void tabActions.deleteTab(tabId)}
+                  canManage={!activeChannel.isArchived}
+                />
+              }
             />
             <BookmarksBar
               bookmarks={state.channelBookmarks[activeChannel.id] ?? []}
@@ -480,6 +575,25 @@ export function AppLayout() {
                 />
               </div>
             )}
+            {activeFolderTab ? (
+              <FolderView
+                tab={activeFolderTab}
+                workspaceSlug={slug}
+                channelId={activeChannel.id}
+                channelName={`#${activeChannel.name}`}
+                editable={!activeChannel.isArchived}
+                onSave={tabActions.saveCanvas}
+                folderTabs={tabActions.tabs.filter((t) => t.type === "folder")}
+              />
+            ) : activeCanvasTab ? (
+              <CanvasView
+                tab={activeCanvasTab}
+                workspaceSlug={slug}
+                channelId={activeChannel.id}
+                editable={!activeChannel.isArchived}
+              />
+            ) : (
+            <>
             <MessageList channelId={activeChannel.id} onOpenThread={handleOpenThread} onOpenProfile={handleOpenProfile} onJoinHuddle={handleJoinHuddle} onPinMessage={pins.pinMessage} onUnpinMessage={pins.unpinMessage} onShareMessage={messageActions.shareMessage} onSaveMessage={messageActions.saveMessage} onUnsaveMessage={messageActions.unsaveMessage} savedMessageIds={state.savedMessageIds} ephemeralMessages={slashCmds.getEphemeralMessages(activeChannel.id)} onEphemeralMessage={slashCmds.addEphemeral} />
             <div className="relative">
               <TypingIndicator typingUsers={typingUsers} />
@@ -492,10 +606,12 @@ export function AppLayout() {
               ) : (
                 <>
                   <ScheduledMessagesBanner channelId={activeChannel.id} workspaceSlug={slug} onViewScheduled={handleSelectOutboxView} />
-                  <MessageInput ref={messageInputRef} channelId={activeChannel.id} channelName={activeChannel.name} externalDragDrop onTyping={emitTyping} slashCommands={slashCmds.commands} onSlashCommand={slashCmds.execute} />
+                  <MessageInput ref={messageInputRef} channelId={activeChannel.id} channelName={activeChannel.name} externalDragDrop onTyping={emitTyping} slashCommands={slashCmds.commands} onSlashCommand={slashCmds.execute} onStartCall={(video) => handleStartHuddle(activeChannel.id, activeChannel.name, video)} />
                 </>
               )}
             </div>
+            </>
+            )}
           </>
         ) : activeDm ? (
           <>
@@ -521,6 +637,9 @@ export function AppLayout() {
                 onTyping={emitTyping}
                 slashCommands={slashCmds.commands}
                 onSlashCommand={slashCmds.execute}
+                onStartCall={(video) =>
+                  handleStartHuddle(activeDm.channel.id, activeDm.otherUser.displayName, video)
+                }
               />
             </div>
           </>
@@ -548,6 +667,13 @@ export function AppLayout() {
                 onTyping={emitTyping}
                 slashCommands={slashCmds.commands}
                 onSlashCommand={slashCmds.execute}
+                onStartCall={(video) =>
+                  handleStartHuddle(
+                    activeGroupDm.channel.id,
+                    activeGroupDm.channel.displayName ?? "Group DM",
+                    video,
+                  )
+                }
               />
             </div>
           </>
@@ -611,6 +737,7 @@ export function AppLayout() {
           />
         </>
       ) : null}
+      </div>
 
       <SearchModal
         open={searchOpen}
@@ -632,6 +759,20 @@ export function AppLayout() {
           ...state.groupDms.map((gdm) => [gdm.channel.id, gdm.channel.displayName ?? gdm.members.map((m) => m.displayName).join(", ")] as const),
         ])}
         onShare={messageActions.confirmShare}
+      />
+      {dockedHuddle && (
+        <HuddleDock
+          channelId={dockedHuddle.channelId}
+          channelName={dockedHuddle.channelName}
+          onClose={handleLeaveHuddle}
+        />
+      )}
+
+      <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} workspaceSlug={slug} />
+      <WorkspaceSettingsDialog
+        open={workspaceSettingsOpen}
+        onOpenChange={setWorkspaceSettingsOpen}
+        workspaceSlug={slug}
       />
       </div>
     </div>

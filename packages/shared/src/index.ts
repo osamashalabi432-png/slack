@@ -39,6 +39,46 @@ export type { FileCategory, FileBrowserItem } from "./types/file-browser";
 export type { CustomEmoji } from "./types/custom-emoji";
 export type { ChannelBookmark } from "./types/bookmark";
 export type {
+  ChannelTab,
+  ChannelTabType,
+  ChannelTabWithContent,
+  CanvasContent,
+} from "./types/tab";
+export { CHANNEL_TAB_TYPES } from "./types/tab";
+export type { FolderItem, FolderContent, SavedFolderItem } from "./types/tab";
+export type {
+  UserGroup,
+  UserGroupDetail,
+  UserGroupMember,
+  UserGroupChannel,
+  SidebarGroupSection,
+} from "./types/user-group";
+export { isValidGroupHandle, handleFromName } from "./types/user-group";
+export type { Page, PageWithContent, PageDetail, PageCrumb } from "./types/page";
+export { pageTitle, UNTITLED_PAGE } from "./types/page";
+export type {
+  DbPropertyType,
+  DbOptionColor,
+  DbSelectOption,
+  DbProperty,
+  DbViewType,
+  DbView,
+  DbRowValues,
+  CanvasDatabase,
+  CanvasDatabaseRow,
+  CanvasDatabaseWithRows,
+} from "./types/canvas-database";
+export {
+  DB_PROPERTY_TYPES,
+  DB_OPTION_COLORS,
+  DB_VIEW_TYPES,
+  DATABASE_PRESETS,
+  PRESET_NAMES,
+  databaseSchemaForPreset,
+  defaultDatabaseSchema,
+} from "./types/canvas-database";
+export type { DatabasePreset } from "./types/canvas-database";
+export type {
   SlashCommandDefinition,
   EphemeralMessage,
   SlashCommandExecuteRequest,
@@ -59,6 +99,9 @@ export type {
   AttachmentId,
   BotAppId,
   BookmarkId,
+  ChannelTabId,
+  UserGroupId,
+  PageId,
   EmojiId,
   ScheduledMessageId,
   ApiKeyId,
@@ -71,6 +114,9 @@ export {
   asAttachmentId,
   asBotAppId,
   asBookmarkId,
+  asChannelTabId,
+  asUserGroupId,
+  asPageId,
   asEmojiId,
   asScheduledMessageId,
   asApiKeyId,
@@ -81,6 +127,9 @@ export {
   zAttachmentId,
   zBotAppId,
   zBookmarkId,
+  zChannelTabId,
+  zUserGroupId,
+  zPageId,
   zEmojiId,
   zScheduledMessageId,
   zApiKeyId,

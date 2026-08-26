@@ -11,6 +11,7 @@ import type {
   ChannelNotifyLevel,
   CustomEmoji,
   ChannelBookmark,
+  ChannelTab,
 } from "@openslaq/shared";
 
 export interface WorkspaceInfo extends Workspace {
@@ -84,7 +85,17 @@ export interface ChatStoreState {
   channels: Channel[];
   dms: DmConversation[];
   groupDms: GroupDmConversation[];
-  activeView: "channel" | "unreads" | "saved" | "outbox" | "files" | "compose";
+  activeView:
+    | "channel"
+    | "unreads"
+    | "saved"
+    | "outbox"
+    | "files"
+    | "compose"
+    | "directory"
+    | "page";
+  /** Set while activeView is "page". */
+  activePageId: string | null;
   composePreviewChannelId: string | null;
   activeChannelId: string | null;
   activeDmId: string | null;
@@ -105,6 +116,11 @@ export interface ChatStoreState {
   channelNotificationPrefs: Record<string, ChannelNotifyLevel>;
   customEmojis: CustomEmoji[];
   channelBookmarks: Record<string, ChannelBookmark[]>;
+  /** Tabs pinned to each channel, ordered by position. */
+  channelTabs: Record<string, ChannelTab[]>;
+  /** Open tab for the active channel; null means the Messages tab. */
+  activeTabId: string | null;
+  /** Canvas bodies keyed by tab id, loaded on demand. */
   markedUnreadChannelId: string | null;
   scrollTarget: ScrollTarget | null;
   ui: ChatUiState;
@@ -117,6 +133,7 @@ export const initialState: ChatStoreState = {
   dms: [],
   groupDms: [],
   activeView: "channel",
+  activePageId: null,
   composePreviewChannelId: null,
   activeChannelId: null,
   activeDmId: null,
@@ -137,6 +154,8 @@ export const initialState: ChatStoreState = {
   channelNotificationPrefs: {},
   customEmojis: [],
   channelBookmarks: {},
+  channelTabs: {},
+  activeTabId: null,
   markedUnreadChannelId: null,
   scrollTarget: null,
   ui: {
@@ -166,6 +185,8 @@ export type ChatAction =
   | { type: "workspace/selectSavedView" }
   | { type: "workspace/selectOutboxView" }
   | { type: "workspace/selectFilesView" }
+  | { type: "workspace/selectDirectoryView" }
+  | { type: "workspace/selectPage"; pageId: string }
   | { type: "workspace/selectComposeView" }
   | { type: "compose/setPreviewChannel"; channelId: string | null }
   | { type: "workspace/selectChannel"; channelId: string }
@@ -279,6 +300,11 @@ export type ChatAction =
   | { type: "bookmarks/set"; channelId: string; bookmarks: ChannelBookmark[] }
   | { type: "bookmarks/add"; bookmark: ChannelBookmark }
   | { type: "bookmarks/remove"; channelId: string; bookmarkId: string }
+  | { type: "tabs/set"; channelId: string; tabs: ChannelTab[] }
+  | { type: "tabs/add"; tab: ChannelTab }
+  | { type: "tabs/update"; tab: ChannelTab }
+  | { type: "tabs/remove"; channelId: string; tabId: string }
+  | { type: "tabs/select"; tabId: string | null }
   | { type: "user/profileUpdated"; userId: string; displayName: string; avatarUrl: string | null };
 
 function dedupeIds(ids: string[]): string[] {
@@ -358,6 +384,7 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "unreads",
+        activePageId: null,
         activeChannelId: null,
         activeDmId: null,
         activeGroupDmId: null,
@@ -370,6 +397,7 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "saved",
+        activePageId: null,
         activeChannelId: null,
         activeDmId: null,
         activeGroupDmId: null,
@@ -382,6 +410,7 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "outbox",
+        activePageId: null,
         activeChannelId: null,
         activeDmId: null,
         activeGroupDmId: null,
@@ -394,6 +423,33 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "files",
+        activePageId: null,
+        activeChannelId: null,
+        activeDmId: null,
+        activeGroupDmId: null,
+        activeThreadId: null,
+        activeProfileUserId: null,
+        composePreviewChannelId: null,
+      };
+    }
+    case "workspace/selectDirectoryView": {
+      return {
+        ...state,
+        activeView: "directory",
+        activePageId: null,
+        activeChannelId: null,
+        activeDmId: null,
+        activeGroupDmId: null,
+        activeThreadId: null,
+        activeProfileUserId: null,
+        composePreviewChannelId: null,
+      };
+    }
+    case "workspace/selectPage": {
+      return {
+        ...state,
+        activeView: "page",
+        activePageId: action.pageId,
         activeChannelId: null,
         activeDmId: null,
         activeGroupDmId: null,
@@ -406,6 +462,7 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "compose",
+        activePageId: null,
         activeChannelId: null,
         activeDmId: null,
         activeGroupDmId: null,
@@ -425,6 +482,7 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "channel",
+        activePageId: null,
         activeChannelId: action.channelId,
         activeDmId: null,
         activeGroupDmId: null,
@@ -433,16 +491,19 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
         unreadCounts: restUnread,
         markedUnreadChannelId: null,
         composePreviewChannelId: null,
+        // Each channel opens on its Messages tab.
+        activeTabId: null,
       };
     }
     case "workspace/selectDefaultChannel": {
       // Used by bootstrap — only select if user hasn't explicitly chosen unreads view
-      if (state.activeView === "unreads" || state.activeView === "saved" || state.activeView === "outbox" || state.activeView === "files" || state.activeView === "compose" || state.activeChannelId || state.activeDmId || state.activeGroupDmId) {
+      if (state.activeView === "unreads" || state.activeView === "saved" || state.activeView === "outbox" || state.activeView === "files" || state.activeView === "directory" || state.activeView === "page" || state.activeView === "compose" || state.activeChannelId || state.activeDmId || state.activeGroupDmId) {
         return state;
       }
       return {
         ...state,
         activeView: "channel",
+        activePageId: null,
         activeChannelId: action.channelId,
         activeDmId: null,
         activeGroupDmId: null,
@@ -456,6 +517,7 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
       return {
         ...state,
         activeView: "channel",
+        activePageId: null,
         activeChannelId: action.fallbackChannelId,
         activeDmId: null,
         activeGroupDmId: null,
@@ -1301,6 +1363,51 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
           [action.channelId]: existing.filter((b) => b.id !== action.bookmarkId),
         },
       };
+    }
+    case "tabs/set": {
+      return {
+        ...state,
+        channelTabs: { ...state.channelTabs, [action.channelId]: action.tabs },
+      };
+    }
+    case "tabs/add": {
+      const existing = state.channelTabs[action.tab.channelId] ?? [];
+      if (existing.some((t) => t.id === action.tab.id)) return state;
+      return {
+        ...state,
+        channelTabs: {
+          ...state.channelTabs,
+          [action.tab.channelId]: [...existing, action.tab].sort((a, b) => a.position - b.position),
+        },
+      };
+    }
+    case "tabs/update": {
+      const existing = state.channelTabs[action.tab.channelId];
+      if (!existing) return state;
+      return {
+        ...state,
+        channelTabs: {
+          ...state.channelTabs,
+          [action.tab.channelId]: existing.map((t) => (t.id === action.tab.id ? action.tab : t)),
+        },
+      };
+    }
+    case "tabs/remove": {
+      const existing = state.channelTabs[action.channelId];
+      if (!existing) return state;
+
+      return {
+        ...state,
+        channelTabs: {
+          ...state.channelTabs,
+          [action.channelId]: existing.filter((t) => t.id !== action.tabId),
+        },
+        // Fall back to Messages if the open tab just disappeared.
+        activeTabId: state.activeTabId === action.tabId ? null : state.activeTabId,
+      };
+    }
+    case "tabs/select": {
+      return { ...state, activeTabId: action.tabId };
     }
     default:
       return state;

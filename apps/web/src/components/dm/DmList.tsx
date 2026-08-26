@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { DmAvatar } from "./DmAvatar";
 import { Plus } from "lucide-react";
 import type { HuddleState } from "@openslaq/shared";
 import type { DmConversation, GroupDmConversation, PresenceEntry } from "../../state/chat-store";
@@ -37,12 +38,12 @@ export function DmList({
   activeHuddles,
 }: DmListProps) {
   return (
-    <div className="py-2">
+    <div className="py-2 px-2">
       <button
         type="button"
         data-testid="dms-section-header"
         onClick={onToggleCollapsed}
-        className="group w-full px-4 py-1 text-[13px] text-gray-400 font-semibold flex items-center justify-between hover:bg-white/10 rounded-sm bg-transparent border-none cursor-pointer text-left"
+        className="group w-full px-2 py-1 text-[13px] text-gray-400 font-semibold flex items-center justify-between hover:bg-white/10 rounded-md bg-transparent border-none cursor-pointer text-left"
       >
         <span className="flex items-center gap-1">
           {/* Speech bubble icon (default) */}
@@ -95,19 +96,18 @@ export function DmList({
                 type="button"
                 onClick={() => onSelectDm(channel.id)}
                 className={clsx(
-                  "flex w-full items-center justify-between py-1 pl-6 pr-4 border-none text-white text-left cursor-pointer text-sm",
+                  "flex w-full items-center justify-between py-1 pl-4 pr-2 rounded-md border-none text-white text-left cursor-pointer text-sm",
                   activeDmId === channel.id
                     ? "bg-white/15"
                     : "bg-transparent hover:bg-white/10",
                 )}
               >
                 <span className={clsx("flex items-center gap-2", unread > 0 && "font-bold")}>
-                  <span
-                    data-testid={`presence-${otherUser.id}`}
-                    className={clsx(
-                      "w-2 h-2 rounded-full shrink-0",
-                      online ? "bg-green-500" : "bg-gray-500",
-                    )}
+                  <DmAvatar
+                    userId={otherUser.id}
+                    displayName={otherUser.displayName}
+                    avatarUrl={otherUser.avatarUrl}
+                    online={online}
                   />
                   {label}
                   {statusEmoji && (
@@ -142,7 +142,7 @@ export function DmList({
                 onClick={() => onSelectGroupDm(channel.id)}
                 data-testid={`group-dm-${channel.id}`}
                 className={clsx(
-                  "flex w-full items-center justify-between py-1 pl-6 pr-4 border-none text-white text-left cursor-pointer text-sm",
+                  "flex w-full items-center justify-between py-1 pl-4 pr-2 rounded-md border-none text-white text-left cursor-pointer text-sm",
                   activeGroupDmId === channel.id
                     ? "bg-white/15"
                     : "bg-transparent hover:bg-white/10",

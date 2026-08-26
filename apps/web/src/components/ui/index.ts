@@ -23,6 +23,9 @@ export {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "./dropdown-menu";
 export { Switch } from "./switch";
 export { Tooltip, TooltipProvider } from "./tooltip";

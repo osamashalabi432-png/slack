@@ -2,6 +2,7 @@ import { useRef, useCallback, useState, useEffect, forwardRef, useImperativeHand
 import { useParams } from "react-router-dom";
 import { RichTextEditor, type MentionSuggestionItem, type SlashCommandItem } from "@openslaq/editor";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { fetchUserGroups } from "@openslaq/client-core";
 import { FilePreviewList } from "./FilePreviewList";
 import { useFileUpload } from "../../hooks/useFileUpload";
 import { useDraftMessage } from "../../hooks/useDraftMessage";
@@ -25,6 +26,8 @@ interface MessageInputProps {
   onTyping?: () => void;
   slashCommands?: SlashCommandItem[];
   onSlashCommand?: (channelId: string, command: string, args: string) => void;
+  /** Starts a huddle in this conversation; omit to hide the call buttons. */
+  onStartCall?: (video: boolean) => void;
 }
 
 export interface MessageInputHandle {
@@ -33,7 +36,7 @@ export interface MessageInputHandle {
 }
 
 export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
-  function MessageInput({ channelId, channelName, isDm, parentMessageId, externalDragDrop, onTyping, slashCommands, onSlashCommand }, ref) {
+  function MessageInput({ channelId, channelName, isDm, parentMessageId, externalDragDrop, onTyping, slashCommands, onSlashCommand, onStartCall }, ref) {
     const user = useCurrentUser();
     const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +46,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
     const [submitting, setSubmitting] = useState(false);
     const contentRef = useRef<string>("");
     const auth = useAuthProvider();
+    const authRef = useRef(auth);
+    authRef.current = auth;
     const { state, dispatch } = useChatStore();
     const upload = useFileUpload();
     const { sendMessage } = useMessageMutations(user);
@@ -57,16 +62,28 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
     useEffect(() => {
       if (!workspaceSlug) return;
-      listMembers(workspaceSlug).then((members) => {
-        setMentionMembers(
-          members
+      // Groups sit alongside people in the @ list: typing @marketing-team and
+      // picking it notifies the whole roster.
+      Promise.all([
+        listMembers(workspaceSlug),
+        fetchUserGroups({ api: apiClient, auth: authRef.current }, { workspaceSlug }).catch(
+          () => [],
+        ),
+      ]).then(([members, groups]) => {
+        setMentionMembers([
+          ...groups.map((g) => ({
+            id: `group:${g.handle}`,
+            displayName: g.handle,
+            isGroup: true,
+          })),
+          ...members
             .filter((m) => m.id !== user?.id)
             .map((m) => ({
               id: m.id,
               displayName: m.displayName,
               avatarUrl: m.avatarUrl,
             })),
-        );
+        ]);
       }).catch((err) => {
         console.warn("Failed to load workspace members for mentions:", err);
       });
@@ -270,6 +287,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
           customEmojis={state.customEmojis.map((e) => ({ id: e.id, name: e.name, url: e.url }))}
           slashCommands={slashCommands}
           onSlashCommand={onSlashCommand ? handleSlashCommand : undefined}
+          onStartCall={onStartCall}
         />
         {upload.error && (
           <div className="text-danger-text text-xs mt-1">{upload.error}</div>

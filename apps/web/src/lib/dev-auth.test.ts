@@ -12,7 +12,7 @@ import {
 vi.mock("../env", () => ({
   env: {
     VITE_E2E_TEST_SECRET: "openslaq-e2e-test-secret-do-not-use-in-prod",
-    VITE_STACK_PROJECT_ID: "924565c5-6377-44b7-aa75-6b7de8d311f4",
+    VITE_STACK_PROJECT_ID: "aefaf8ec-05a0-441f-ac7b-ef4a83a346b4",
   },
 }));
 

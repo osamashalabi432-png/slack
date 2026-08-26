@@ -59,6 +59,23 @@ describe("HuddleSystemMessage", () => {
     expect(screen.getByText("Lasted 30 min")).toBeTruthy();
   });
 
+  test("a rejoin does not render the same person twice", () => {
+    const { container } = render(
+      <HuddleSystemMessage
+        message={makeHuddleMessage({
+          metadata: {
+            huddleEndedAt: "2026-03-01T10:30:00Z",
+            duration: 600,
+            finalParticipants: ["user-1", "user-2", "user-1"],
+          } as HuddleMessage["metadata"],
+        })}
+      />,
+    );
+
+    expect(container.querySelectorAll("[title=\"user-1\"]")).toHaveLength(1);
+    expect(container.querySelectorAll("[title=\"user-2\"]")).toHaveLength(1);
+  });
+
   test("inactive huddle without metadata shows minimal text", () => {
     render(<HuddleSystemMessage message={makeHuddleMessage()} />);
     expect(screen.getByText(/started a huddle/)).toBeTruthy();

@@ -66,7 +66,8 @@ export function HuddleSystemMessage({ message, activeHuddle, currentUserId, onJo
             </span>
             {meta.finalParticipants && meta.finalParticipants.length > 0 && (
               <div className="flex -space-x-1">
-                {meta.finalParticipants.map((userId) => (
+                {/* The history records every join, so a rejoin repeats a user. */}
+                {[...new Set(meta.finalParticipants)].map((userId) => (
                   <div
                     key={userId}
                     className="w-5 h-5 rounded-full bg-gray-600 border-2 border-surface-raised flex items-center justify-center text-[9px] text-gray-300"

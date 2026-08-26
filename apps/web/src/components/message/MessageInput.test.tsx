@@ -139,6 +139,9 @@ vi.mock("@openslaq/client-core", async (importOriginal) => {
   return {
     ...mod,
     createScheduledMessageOp: mockCreateScheduledMessageOp,
+    // The composer lists user groups in its @ menu; without a stub this
+    // reaches the network and the test hangs.
+    fetchUserGroups: () => Promise.resolve([]),
   };
 });
 

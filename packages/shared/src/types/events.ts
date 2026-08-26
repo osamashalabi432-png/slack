@@ -1,4 +1,4 @@
-import type { MessageId, ChannelId, UserId, ScheduledMessageId, EmojiId, BookmarkId } from "./ids";
+import type { MessageId, ChannelId, UserId, ScheduledMessageId, EmojiId, BookmarkId, ChannelTabId } from "./ids";
 import type { ScheduledMessage } from "./scheduled-message";
 import type { Channel } from "./channel";
 import type { Message } from "./message";
@@ -6,6 +6,8 @@ import type { ReactionGroup } from "./reaction";
 import type { HuddleState } from "./huddle";
 import type { CustomEmoji } from "./custom-emoji";
 import type { ChannelBookmark } from "./bookmark";
+import type { ChannelTab } from "./tab";
+import type { CanvasDatabase, CanvasDatabaseRow } from "./canvas-database";
 import type { EphemeralMessage } from "./slash-command";
 
 export interface SocketData {
@@ -86,6 +88,18 @@ export interface ServerToClientEvents {
   "emoji:deleted": (payload: { emojiId: EmojiId }) => void;
   "bookmark:added": (payload: { bookmark: ChannelBookmark }) => void;
   "bookmark:removed": (payload: { channelId: ChannelId; bookmarkId: BookmarkId }) => void;
+  "tab:created": (payload: { tab: ChannelTab }) => void;
+  "tab:updated": (payload: { tab: ChannelTab }) => void;
+  "tab:removed": (payload: { channelId: ChannelId; tabId: ChannelTabId }) => void;
+  "database:updated": (payload: { channelId: ChannelId; database: CanvasDatabase }) => void;
+  "database:rowUpserted": (payload: { channelId: ChannelId; databaseId: string; row: CanvasDatabaseRow }) => void;
+  "database:rowRemoved": (payload: { channelId: ChannelId; databaseId: string; rowId: string }) => void;
+  "canvas:updated": (payload: {
+    channelId: ChannelId;
+    tabId: ChannelTabId;
+    updatedBy: UserId;
+    updatedAt: string;
+  }) => void;
   "command:ephemeral": (payload: EphemeralMessage) => void;
   "user:profileUpdated": (payload: {
     userId: UserId;

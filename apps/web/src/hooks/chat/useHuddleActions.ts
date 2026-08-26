@@ -13,9 +13,16 @@ type HuddleWindowHandle = {
   close: () => void;
 };
 
-function openHuddleWindow(channelId: string, channelName?: string): HuddleWindowHandle | null {
-  const nameParam = channelName ? `?name=${encodeURIComponent(channelName)}` : "";
-  const path = `/huddle/${channelId}${nameParam}`;
+function openHuddleWindow(
+  channelId: string,
+  channelName?: string,
+  video?: boolean,
+): HuddleWindowHandle | null {
+  const params = new URLSearchParams();
+  if (channelName) params.set("name", channelName);
+  if (video) params.set("video", "1");
+  const query = params.toString();
+  const path = `/huddle/${channelId}${query ? `?${query}` : ""}`;
 
   if (isTauri()) {
     // Use a Rust command to create the window — this ensures proper WKWebView
@@ -73,7 +80,11 @@ export function useHuddleActions() {
   }, [dispatch]);
 
   const startHuddle = useCallback(
-    (channelId: string, channelName?: string) => {
+    (
+      channelId: string,
+      channelName?: string,
+      options?: { video?: boolean; inline?: boolean },
+    ) => {
       setCurrentHuddleChannel(dispatch, channelId);
       // Optimistically populate activeHuddles so the UI shows "In huddle" immediately
       if (user) {
@@ -119,16 +130,21 @@ export function useHuddleActions() {
           },
         });
       }
-      const handle = openHuddleWindow(channelId, channelName);
-      handleRef.current = handle;
-      handle?.onClose(() => cleanupHuddle(channelId));
+      // Docked huddles render inside the main window, so there is no separate
+      // webview to open or track.
+      if (!options?.inline) {
+        const handle = openHuddleWindow(channelId, channelName, options?.video);
+        handleRef.current = handle;
+        handle?.onClose(() => cleanupHuddle(channelId));
+      }
     },
     [dispatch, user, cleanupHuddle],
   );
 
   const joinHuddle = useCallback(
-    (channelId: string, channelName?: string) => {
+    (channelId: string, channelName?: string, options?: { inline?: boolean }) => {
       setCurrentHuddleChannel(dispatch, channelId);
+      if (options?.inline) return;
       const handle = openHuddleWindow(channelId, channelName);
       handleRef.current = handle;
       handle?.onClose(() => cleanupHuddle(channelId));

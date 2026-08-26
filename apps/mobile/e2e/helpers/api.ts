@@ -1,7 +1,7 @@
 import { SignJWT } from "jose";
 
 const E2E_TEST_SECRET = "openslaq-e2e-test-secret-do-not-use-in-prod";
-const PROJECT_ID = "924565c5-6377-44b7-aa75-6b7de8d311f4";
+const PROJECT_ID = "aefaf8ec-05a0-441f-ac7b-ef4a83a346b4";
 const STACK_AUTH_BASE = `https://api.stack-auth.com/api/v1/projects/${PROJECT_ID}`;
 const ISSUER = `${STACK_AUTH_BASE}`;
 const BASE_URL = process.env.API_URL ?? "http://localhost:3001";

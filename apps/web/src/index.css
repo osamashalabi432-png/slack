@@ -29,6 +29,19 @@
   --color-warning-text: var(--warning-text);
   --color-code-inline-bg: var(--code-inline-bg);
   --color-mark-bg: var(--mark-bg);
+  --color-rail: var(--rail-bg);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-active: var(--rail-active);
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-topbar: var(--topbar-bg);
+  --color-topbar-input: var(--topbar-input);
+
   --color-avatar-fallback-bg: var(--avatar-fallback-bg);
   --color-avatar-fallback-text: var(--avatar-fallback-text);
 }
@@ -59,6 +72,22 @@
   --mark-bg: #fef08a;
   --avatar-fallback-bg: #e5e7eb;
   --avatar-fallback-text: #6b7280;
+
+  /* Slack-style chrome: aubergine rail + sidebar */
+  --rail-bg: #350d36;
+  --rail-hover: rgba(255,255,255,0.12);
+  --rail-active: rgba(255,255,255,0.2);
+  --sidebar-bg: #3f0e40;
+  --sidebar-hover: rgba(255,255,255,0.08);
+  --sidebar-active: #1164a3;
+  --sidebar-accent: #eb4d5c;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #cfc3cf;
+  --sidebar-border: rgba(255,255,255,0.13);
+  --topbar-bg: #350d36;
+  --topbar-input: rgba(255,255,255,0.12);
+  --scrollbar-thumb: rgba(0,0,0,0.28);
+  --scrollbar-thumb-hover: rgba(0,0,0,0.45);
 }
 
 .dark {
@@ -87,6 +116,41 @@
   --mark-bg: #854d0e;
   --avatar-fallback-bg: #374151;
   --avatar-fallback-text: #9ca3af;
+
+  /* Slack-style chrome: dark */
+  --rail-bg: #0f1012;
+  --rail-hover: rgba(255,255,255,0.1);
+  --rail-active: rgba(255,255,255,0.16);
+  --sidebar-bg: #16171a;
+  --sidebar-hover: rgba(255,255,255,0.06);
+  --sidebar-active: #1164a3;
+  --sidebar-accent: #eb4d5c;
+  --sidebar-text: #e8e8e8;
+  --sidebar-muted: #9a9c9e;
+  --sidebar-border: rgba(255,255,255,0.1);
+  --topbar-bg: #0f1012;
+  --topbar-input: rgba(255,255,255,0.1);
+  --scrollbar-thumb: rgba(255,255,255,0.22);
+  --scrollbar-thumb-hover: rgba(255,255,255,0.38);
+}
+
+/* Rounded corners for the desktop window. The window is transparent so the
+   corners can be cut in CSS — Windows draws none of its own for an
+   undecorated window, and Windows 10 has no DWM corner preference. */
+html.tauri,
+html.tauri body {
+  background: transparent;
+}
+
+html.tauri body > #root {
+  height: 100vh;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Maximised fills the screen, so rounding would just show the desktop. */
+html.tauri.window-maximized body > #root {
+  border-radius: 0;
 }
 
 *:focus-visible {
@@ -122,4 +186,61 @@ body {
   font-style: var(--shiki-dark-font-style) !important;
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* Thin scrollbars for the sidebar chrome */
+.chrome-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.22) transparent;
+}
+.chrome-scroll::-webkit-scrollbar { width: 8px; }
+.chrome-scroll::-webkit-scrollbar-track { background: transparent; }
+.chrome-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+.chrome-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255,255,255,0.32);
+}
+
+/*
+ * Scrollbars follow the theme. Without this the webview paints Windows'
+ * default light scrollbars, which stand out badly against the dark UI.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 6px;
+  /* Transparent border + clip keeps the thumb visually slimmer than its
+     hit area, so it stays easy to grab. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Opt-out for strips that should scroll without showing a bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }

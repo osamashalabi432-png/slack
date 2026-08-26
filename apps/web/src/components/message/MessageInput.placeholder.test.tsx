@@ -33,7 +33,11 @@ vi.mock("../../lib/api-client", () => ({ useAuthProvider: () => ({}) }));
 vi.mock("../../api", () => ({ api: {} }));
 vi.mock("../../lib/auth", () => ({ redirectToAuth: vi.fn() }));
 vi.mock("../../lib/errors", () => ({ AuthError: class extends Error {} }));
-vi.mock("@openslaq/client-core", () => ({ createScheduledMessageOp: vi.fn() }));
+vi.mock("@openslaq/client-core", () => ({
+  createScheduledMessageOp: vi.fn(),
+  // The composer offers user groups in its @ list.
+  fetchUserGroups: () => Promise.resolve([]),
+}));
 
 import { MessageInput } from "./MessageInput";
 

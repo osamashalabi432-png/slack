@@ -182,3 +182,68 @@
   font-weight: 500;
   font-size: 14px;
 }
+
+/* Divider between action-bar icon groups */
+.editor-action-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background-color: var(--border-default);
+  flex: 0 0 auto;
+}
+
+/* Square-ish icon buttons so the two rows line up like Slack's */
+.editor-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+}
+
+/* ── Send control: plain arrow + chevron, green when active ── */
+.editor-send-btn,
+.editor-send-btn:hover,
+.editor-send-btn:disabled,
+.editor-send-btn:disabled:hover,
+.editor-send-chevron,
+.editor-send-chevron:hover,
+.editor-send-chevron:disabled {
+  background: transparent;
+}
+
+.editor-send-group {
+  border-radius: 6px;
+}
+
+.editor-send-btn,
+.editor-send-chevron {
+  color: var(--color-slaq-green, #007a5a);
+  height: 28px;
+}
+
+.editor-send-btn svg path[fill],
+.editor-send-chevron svg path[stroke] {
+  fill: currentColor;
+}
+
+.editor-send-chevron svg path {
+  fill: none;
+  stroke: currentColor;
+}
+
+.editor-send-btn:hover,
+.editor-send-chevron:hover {
+  background-color: var(--surface-hover);
+}
+
+.editor-send-group.disabled .editor-send-btn,
+.editor-send-group.disabled .editor-send-chevron {
+  color: var(--text-faint);
+}
+
+.editor-send-divider,
+.dark .editor-send-divider {
+  background: var(--border-default);
+}

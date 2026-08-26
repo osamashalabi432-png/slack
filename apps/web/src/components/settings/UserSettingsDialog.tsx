@@ -17,7 +17,7 @@ import { DesktopSettings } from "./DesktopSettings";
 import { ApiKeysManager } from "./ApiKeysManager";
 import { isTauri } from "../../lib/tauri";
 import { User, Bell, Key, Monitor, Palette } from "lucide-react";
-import { useTheme, type ThemeMode } from "../../theme/ThemeProvider";
+import { AppearanceSettings } from "./AppearanceSettings";
 
 type Tab = "profile" | "notifications" | "appearance" | "api-keys" | "desktop";
 
@@ -37,7 +37,6 @@ const tabMeta: Record<Tab, { label: string; icon: typeof User; description: stri
 export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogProps) {
   const user = useCurrentUser();
   const { profile, refresh: refreshProfile } = useCurrentUserProfile();
-  const { mode, setMode } = useTheme();
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("profile");
@@ -182,28 +181,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                 <NotificationSettings />
               )}
 
-              {activeTab === "appearance" && (
-                <div className="flex flex-col gap-3">
-                  <label className="text-sm font-medium text-secondary">Theme</label>
-                  <div className="flex gap-2">
-                    {(["light", "dark"] as ThemeMode[]).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMode(m)}
-                        className={clsx(
-                          "px-4 py-2 rounded-lg text-sm font-medium border cursor-pointer transition-colors capitalize",
-                          mode === m
-                            ? "bg-surface-selected text-primary border-slaq-blue"
-                            : "bg-surface text-secondary border-border-default hover:bg-surface-hover",
-                        )}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {activeTab === "appearance" && <AppearanceSettings />}
 
               {activeTab === "api-keys" && (
                 <ApiKeysManager />

@@ -44,7 +44,7 @@ test.describe("Authentication", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            id: "924565c5-6377-44b7-aa75-6b7de8d311f4",
+            id: "aefaf8ec-05a0-441f-ac7b-ef4a83a346b4",
             display_name: "OpenSlaq",
             config: {
               sign_up_enabled: true,

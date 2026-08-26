@@ -3,12 +3,14 @@ import { createServer } from "node:net";
 import { cleanupTestWorkspaces } from "./helpers/api-client";
 
 process.env.E2E_TEST_SECRET ??= "openslaq-e2e-test-secret-do-not-use-in-prod";
-process.env.VITE_STACK_PROJECT_ID ??= "924565c5-6377-44b7-aa75-6b7de8d311f4";
+process.env.VITE_STACK_PROJECT_ID ??= "aefaf8ec-05a0-441f-ac7b-ef4a83a346b4";
 process.env.ADMIN_USER_IDS = "admin-test-user";
 process.env.API_ARTIFICIAL_DELAY_MS ??= "0";
 process.env.GITHUB_WEBHOOK_SECRET ??= "test-webhook-secret-123";
 process.env.DEMO_EMAIL ??= "demo-test@openslaq.dev";
 process.env.DEMO_OTP_CODE ??= "999999";
+// env.ts refuses to start with DEMO_EMAIL set but no server key.
+process.env.STACK_SECRET_SERVER_KEY ??= "test-stack-secret";
 
 const [{ default: app }, { setIO }, { setEnabled }] = await Promise.all([
   import("../../api/src/app"),

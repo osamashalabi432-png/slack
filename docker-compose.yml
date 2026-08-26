@@ -22,9 +22,13 @@ services:
     command: --config /etc/livekit.yaml --dev
     ports:
       - "${PORT_PREFIX:-30}04:7880"
-      - "${PORT_PREFIX:-30}05:7881"
-      - "${PORT_PREFIX:-30}06:7882"
+      # Media ports must be published 1:1 — ICE candidates carry these exact
+      # port numbers, so remapping them makes the peer connection unreachable.
+      - "7881:7881"
+      - "7882:7882/udp"
       - "3478:3478/udp"
+      # TURN relay range, needed when a peer cannot use a direct candidate.
+      - "30000-30002:30000-30002/udp"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
 

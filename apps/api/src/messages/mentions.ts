@@ -4,12 +4,14 @@ import { messageMentions } from "./schema";
 import { users } from "../users/schema";
 import { listChannelMembers } from "../channels/service";
 import { getOnlineUserIds } from "../presence/service";
+import { membersOfHandles } from "../groups/service";
+import { channels } from "../channels/schema";
 import type { ChannelId, UserId, Mention } from "@openslaq/shared";
 import { asUserId } from "@openslaq/shared";
 
 interface ParsedMention {
   userId: string;
-  type: "user" | "here" | "channel";
+  type: "user" | "here" | "channel" | "group";
 }
 
 const MENTION_REGEX = /<@([^>]+)>/g;
@@ -27,6 +29,9 @@ export function parseMentions(content: string): ParsedMention[] {
       mentions.push({ userId: "here", type: "here" });
     } else if (token === "channel") {
       mentions.push({ userId: "channel", type: "channel" });
+    } else if (token.startsWith("group:")) {
+      // `<@group:marketing>` — a user group's handle, resolved to its roster.
+      mentions.push({ userId: token.slice("group:".length), type: "group" });
     } else {
       mentions.push({ userId: token, type: "user" });
     }
@@ -39,13 +44,36 @@ export async function expandGroupMentions(
   parsed: ParsedMention[],
   channelId: ChannelId,
   senderId: UserId,
-): Promise<{ userId: string; type: "user" | "here" | "channel" }[]> {
-  const result: { userId: string; type: "user" | "here" | "channel" }[] = [];
+): Promise<{ userId: string; type: "user" | "here" | "channel" | "group" }[]> {
+  const result: { userId: string; type: "user" | "here" | "channel" | "group" }[] = [];
 
   // Direct user mentions
   for (const m of parsed) {
     if (m.type === "user") {
       result.push({ userId: m.userId, type: "user" });
+    }
+  }
+
+  // A group mention reaches its roster. Only people who can actually read the
+  // channel are notified — a group can outlive its access to a channel.
+  const handles = parsed.filter((m) => m.type === "group").map((m) => m.userId);
+  if (handles.length > 0) {
+    const [channel] = await db
+      .select({ workspaceId: channels.workspaceId })
+      .from(channels)
+      .where(eq(channels.id, channelId))
+      .limit(1);
+    if (channel) {
+      const byHandle = await membersOfHandles(channel.workspaceId, handles);
+      const readers = new Set((await listChannelMembers(channelId)).map((m) => m.id));
+      for (const ids of byHandle.values()) {
+        for (const id of ids) {
+          if (id === senderId || !readers.has(id)) continue;
+          if (!result.some((r) => r.userId === id)) {
+            result.push({ userId: id, type: "group" });
+          }
+        }
+      }
     }
   }
 

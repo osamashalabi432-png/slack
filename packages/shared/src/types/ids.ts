@@ -7,6 +7,9 @@ export type MessageId = string & { readonly __brand: "MessageId" };
 export type AttachmentId = string & { readonly __brand: "AttachmentId" };
 export type BotAppId = string & { readonly __brand: "BotAppId" };
 export type BookmarkId = string & { readonly __brand: "BookmarkId" };
+export type ChannelTabId = string & { readonly __brand: "ChannelTabId" };
+export type UserGroupId = string & { readonly __brand: "UserGroupId" };
+export type PageId = string & { readonly __brand: "PageId" };
 export type EmojiId = string & { readonly __brand: "EmojiId" };
 export type ScheduledMessageId = string & {
   readonly __brand: "ScheduledMessageId";
@@ -33,6 +36,17 @@ export function asBotAppId(id: string): BotAppId {
 }
 export function asBookmarkId(id: string): BookmarkId {
   return id as BookmarkId;
+}
+export function asChannelTabId(id: string): ChannelTabId {
+  return id as ChannelTabId;
+}
+
+export function asUserGroupId(id: string): UserGroupId {
+  return id as UserGroupId;
+}
+
+export function asPageId(id: string): PageId {
+  return id as PageId;
 }
 export function asEmojiId(id: string): EmojiId {
   return id as EmojiId;
@@ -77,6 +91,21 @@ export function zBotAppId() {
 /** Zod schema that parses a string and transforms it to a branded BookmarkId. */
 export function zBookmarkId() {
   return z.string().describe("Bookmark ID").transform(asBookmarkId);
+}
+
+/** Zod schema that parses a string and transforms it to a branded PageId. */
+export function zPageId() {
+  return z.string().describe("Page ID").transform(asPageId);
+}
+
+/** Zod schema that parses a string and transforms it to a branded UserGroupId. */
+export function zUserGroupId() {
+  return z.string().describe("User group ID").transform(asUserGroupId);
+}
+
+/** Zod schema that parses a string and transforms it to a branded ChannelTabId. */
+export function zChannelTabId() {
+  return z.string().describe("Channel tab ID").transform(asChannelTabId);
 }
 
 /** Zod schema that parses a string and transforms it to a branded EmojiId. */

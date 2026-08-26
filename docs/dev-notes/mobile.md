@@ -88,12 +88,12 @@ const secret = new TextEncoder().encode('openslaq-e2e-test-secret-do-not-use-in-
 const userId = crypto.randomUUID();
 const jwt = await new SignJWT({
   email: 'dev@openslaq.local', name: 'Dev User', email_verified: true,
-  project_id: '924565c5-6377-44b7-aa75-6b7de8d311f4', branch_id: 'main',
+  project_id: 'aefaf8ec-05a0-441f-ac7b-ef4a83a346b4', branch_id: 'main',
   refresh_token_id: 'dev-rt-' + userId, role: 'authenticated',
   selected_team_id: null, is_anonymous: false, is_restricted: false, restricted_reason: null,
 }).setProtectedHeader({ alg: 'HS256' }).setSubject(userId)
-  .setIssuer('https://api.stack-auth.com/api/v1/projects/924565c5-6377-44b7-aa75-6b7de8d311f4')
-  .setAudience('924565c5-6377-44b7-aa75-6b7de8d311f4')
+  .setIssuer('https://api.stack-auth.com/api/v1/projects/aefaf8ec-05a0-441f-ac7b-ef4a83a346b4')
+  .setAudience('aefaf8ec-05a0-441f-ac7b-ef4a83a346b4')
   .setIssuedAt().setExpirationTime('24h').sign(secret);
 console.log('userId:', userId);
 console.log('jwt:', jwt);

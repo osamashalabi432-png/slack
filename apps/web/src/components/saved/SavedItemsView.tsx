@@ -1,9 +1,11 @@
 import { useCallback, useMemo } from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark, FileText, Link2 } from "lucide-react";
 import { MessageItem } from "../message/MessageItem";
 import { MessageActionsProvider } from "../message/MessageActionsContext";
 import { EmptyState, LoadingState, ErrorState } from "../ui";
 import { useSavedMessages } from "../../hooks/chat/useSavedMessages";
+import { useSavedFolderItems } from "../../hooks/chat/useSavedFolderItems";
+import type { SavedFolderItem } from "@openslaq/shared";
 import type { SavedMessageItem } from "@openslaq/client-core";
 
 interface SavedItemsViewProps {
@@ -24,6 +26,7 @@ export function SavedItemsView({
   onUnsaveMessage,
 }: SavedItemsViewProps) {
   const { data, loading, error, removeItem } = useSavedMessages(workspaceSlug);
+  const savedFiles = useSavedFolderItems(workspaceSlug);
 
   const handleMessageClick = useCallback(
     (channelId: string, messageId: string) => {
@@ -65,13 +68,28 @@ export function SavedItemsView({
             <ErrorState message={error} />
           )}
 
-          {data && data.length === 0 && (
+          {data && data.length === 0 && savedFiles.items.length === 0 && (
             <EmptyState
               icon={<Bookmark className="w-full h-full" strokeWidth={1.5} />}
-              title="No saved messages"
-              subtitle="Save messages for quick reference later"
+              title="Nothing saved yet"
+              subtitle="Save messages and files for quick reference later"
               data-testid="saved-empty-state"
             />
+          )}
+
+          {savedFiles.items.length > 0 && (
+            <div data-testid="saved-files-section">
+              <div className="px-4 py-2 border-b border-border-default bg-surface-raised">
+                <span className="text-[13px] font-semibold text-secondary">Files</span>
+              </div>
+              {savedFiles.items.map((entry) => (
+                <SavedFileRow
+                  key={`${entry.tabId}:${entry.item.id}`}
+                  entry={entry}
+                  onUnsave={() => savedFiles.unsave(entry)}
+                />
+              ))}
+            </div>
           )}
 
           {data?.map((item) => (
@@ -120,6 +138,47 @@ function SavedMessageGroup({
           <MessageItem message={item.message} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function SavedFileRow({
+  entry,
+  onUnsave,
+}: {
+  entry: SavedFolderItem;
+  onUnsave: () => void;
+}) {
+  const { item } = entry;
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 border-b border-border-secondary"
+      data-testid={`saved-file-${item.id}`}
+    >
+      <span className="shrink-0 w-8 h-8 rounded-md bg-surface-tertiary text-secondary flex items-center justify-center">
+        {item.kind === "link" ? <Link2 className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+      </span>
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="min-w-0 flex-1"
+      >
+        <span className="block text-[13px] font-medium text-primary truncate hover:underline">
+          {item.name}
+        </span>
+        <span className="block text-[11px] text-muted truncate">
+          #{entry.channelName} / {entry.tabName}
+        </span>
+      </a>
+      <button
+        type="button"
+        onClick={onUnsave}
+        className="text-[12px] text-link hover:underline bg-transparent border-none cursor-pointer shrink-0"
+        data-testid={`unsave-file-${item.id}`}
+      >
+        Remove
+      </button>
     </div>
   );
 }

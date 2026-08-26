@@ -14,6 +14,8 @@ export const rlMarkAsRead = rateLimit({ bucket: "mark-as-read", max: 60, windowS
 export const rlProfileUpdate = rateLimit({ bucket: "profile-update", max: 10, windowSec: 60 });
 export const rlInviteAdmin = rateLimit({ bucket: "invite-admin", max: 10, windowSec: 60 });
 export const rlMemberManage = rateLimit({ bucket: "member-manage", max: 20, windowSec: 60 });
+// Canvas bodies autosave while typing, so this sits well above the manage tier.
+export const rlCanvasSave = rateLimit({ bucket: "canvas-save", max: 120, windowSec: 60 });
 
 // Tier 2b - Huddle
 export const rlHuddleJoin = rateLimit({ bucket: "huddle-join", max: 10, windowSec: 60 });

@@ -3,7 +3,7 @@ import { createServer } from "node:net";
 import { cleanupTestWorkspaces } from "./helpers/api-client";
 
 process.env.E2E_TEST_SECRET ??= "openslaq-e2e-test-secret-do-not-use-in-prod";
-process.env.VITE_STACK_PROJECT_ID ??= "924565c5-6377-44b7-aa75-6b7de8d311f4";
+process.env.VITE_STACK_PROJECT_ID ??= "aefaf8ec-05a0-441f-ac7b-ef4a83a346b4";
 process.env.API_ARTIFICIAL_DELAY_MS ??= "0";
 
 const [{ default: app }, { setIO }, { setEnabled }] = await Promise.all([

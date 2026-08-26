@@ -118,6 +118,10 @@ vi.mock("../../hooks/useFileDragOverlay", () => ({
 
 // Mock all child components as stubs
 vi.mock("./Sidebar", () => ({ Sidebar: () => <div data-testid="sidebar-stub">Sidebar</div> }));
+vi.mock("./WorkspaceRail", () => ({ WorkspaceRail: () => <div data-testid="rail-stub">Rail</div> }));
+vi.mock("./TopBar", () => ({ TopBar: () => <div data-testid="topbar-stub">TopBar</div> }));
+vi.mock("../settings/InviteDialog", () => ({ InviteDialog: () => null }));
+vi.mock("../settings/WorkspaceSettingsDialog", () => ({ WorkspaceSettingsDialog: () => null }));
 vi.mock("./ResizeHandle", () => ({ ResizeHandle: () => null }));
 vi.mock("../update/UpdateBanner", () => ({ UpdateBanner: () => null }));
 vi.mock("../message/MessageList", () => ({ MessageList: () => null }));
@@ -177,5 +181,19 @@ describe("AppLayout", () => {
     mockState.ui.bootstrapError = null;
     render(<AppLayout />);
     expect(screen.getByTestId("sidebar-stub")).toBeTruthy();
+  });
+
+  test("renders the workspace rail and top bar as part of the shell", () => {
+    render(<AppLayout />);
+    expect(screen.getByTestId("rail-stub")).toBeTruthy();
+    expect(screen.getByTestId("topbar-stub")).toBeTruthy();
+  });
+
+  test("keeps the rail and top bar visible when bootstrap fails", () => {
+    mockState.ui.bootstrapError = "Not a workspace member";
+    render(<AppLayout />);
+    expect(screen.queryByTestId("sidebar-stub")).toBeNull();
+    expect(screen.getByTestId("rail-stub")).toBeTruthy();
+    expect(screen.getByTestId("topbar-stub")).toBeTruthy();
   });
 });

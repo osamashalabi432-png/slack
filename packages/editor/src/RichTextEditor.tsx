@@ -8,7 +8,21 @@ import { CodeBlockShiki } from "tiptap-extension-code-block-shiki";
 import { Markdown } from "tiptap-markdown";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import clsx from "clsx";
-import { Link as LinkIcon } from "lucide-react";
+import {
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  TextQuote,
+  Code,
+  SquareCode,
+  Plus,
+  Smile,
+  AtSign,
+  SquareSlash,
+  CaseSensitive,
+  Mic,
+  Video,
+} from "lucide-react";
 import { EmojiPicker, type CustomEmojiItem } from "./EmojiPicker";
 import { LinkDialog } from "./LinkDialog";
 import { createMentionSuggestion, type MentionSuggestionItem } from "./useMentionSuggestion";
@@ -32,6 +46,8 @@ interface RichTextEditorProps {
   customEmojis?: CustomEmojiItem[];
   slashCommands?: SlashCommandItem[];
   onSlashCommand?: (command: string, args: string) => void;
+  /** Starts a huddle in the current conversation; omit to hide the call buttons. */
+  onStartCall?: (video: boolean) => void;
 }
 
 // ── Inline toolbar sub-components ──────────────────────────────────────
@@ -77,6 +93,7 @@ function FormattingBar({ editor, onOpenLinkDialog }: FormattingBarProps) {
   const inlineButtons: ButtonDef[] = [
     { label: "B", action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), style: { fontWeight: 700 }, tooltip: "Bold (⌘B)" },
     { label: "I", action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), style: { fontStyle: "italic" }, tooltip: "Italic (⌘I)" },
+    { label: "U", action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive("underline"), style: { textDecoration: "underline" }, tooltip: "Underline (⌘U)" },
     { label: "S", action: () => editor.chain().focus().toggleStrike().run(), active: editor.isActive("strike"), style: { textDecoration: "line-through" }, tooltip: "Strikethrough (⌘⇧X)" },
   ];
 
@@ -85,20 +102,20 @@ function FormattingBar({ editor, onOpenLinkDialog }: FormattingBarProps) {
   ];
 
   const listButtons: ButtonDef[] = [
-    { label: "•", action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), tooltip: "Bullet list" },
-    { label: "1.", action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), tooltip: "Ordered list" },
+    { label: <ListOrdered size={16} />, action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), tooltip: "Ordered list" },
+    { label: <List size={16} />, action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), tooltip: "Bullet list" },
   ];
 
   const blockquoteButtons: ButtonDef[] = [
-    { label: ">", action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), tooltip: "Blockquote" },
+    { label: <TextQuote size={16} />, action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), tooltip: "Blockquote" },
   ];
 
   const codeButtons: ButtonDef[] = [
-    { label: "<>", action: () => editor.chain().focus().toggleCode().run(), active: editor.isActive("code"), tooltip: "Inline code (⌘E)" },
-    { label: "{ }", action: () => editor.chain().focus().toggleCodeBlock().run(), active: editor.isActive("codeBlock"), tooltip: "Code block" },
+    { label: <Code size={16} />, action: () => editor.chain().focus().toggleCode().run(), active: editor.isActive("code"), tooltip: "Inline code (⌘E)" },
+    { label: <SquareCode size={16} />, action: () => editor.chain().focus().toggleCodeBlock().run(), active: editor.isActive("codeBlock"), tooltip: "Code block" },
   ];
 
-  const groups = [inlineButtons, linkButtons, listButtons, blockquoteButtons, codeButtons];
+  const groups = [inlineButtons, linkButtons, listButtons, [...blockquoteButtons, ...codeButtons]];
 
   return (
     <div className="formatting-bar flex items-center gap-0.5 px-2 py-1">
@@ -123,9 +140,12 @@ interface ActionBarProps {
   onScheduleSend?: () => void;
   customEmojis?: CustomEmojiItem[];
   onOpenLinkDialog: () => void;
+  formattingVisible: boolean;
+  onToggleFormatting: () => void;
+  onStartCall?: (video: boolean) => void;
 }
 
-function ActionBar({ editor, onSend, disabled, onFileSelect, uploading, onScheduleSend, customEmojis }: ActionBarProps) {
+function ActionBar({ editor, onSend, disabled, onFileSelect, uploading, onScheduleSend, customEmojis, formattingVisible, onToggleFormatting, onStartCall }: ActionBarProps) {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -141,11 +161,23 @@ function ActionBar({ editor, onSend, disabled, onFileSelect, uploading, onSchedu
           aria-label="Attach file"
           title="Attach file"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M14 5.5l-6.5 6.5a3.5 3.5 0 1 1-5-5L9 .5a2 2 0 0 1 3 0 2 2 0 0 1 0 3L5.5 10a.5.5 0 0 1-.7-.7L11 3.1l-.7-.7L4 8.6a1.5 1.5 0 0 0 2.1 2.1L12.5 4a3 3 0 0 0 0-4.2 3 3 0 0 0-4.2 0L1.8 6.3a4.5 4.5 0 0 0 6.4 6.4L14.7 6.2 14 5.5z" />
-          </svg>
+          <Plus size={18} />
         </button>
       )}
+
+      <button
+        type="button"
+        title={formattingVisible ? "Hide formatting" : "Show formatting"}
+        aria-label="Toggle formatting"
+        data-testid="toggle-formatting-button"
+        className={`editor-toolbar-btn${formattingVisible ? " active" : ""}`}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onToggleFormatting();
+        }}
+      >
+        <CaseSensitive size={18} />
+      </button>
 
       <button
         ref={emojiButtonRef}
@@ -158,7 +190,7 @@ function ActionBar({ editor, onSend, disabled, onFileSelect, uploading, onSchedu
           setEmojiPickerOpen((prev) => !prev);
         }}
       >
-        ☺
+        <Smile size={18} />
       </button>
       {emojiPickerOpen && (
         <EmojiPicker
@@ -178,13 +210,64 @@ function ActionBar({ editor, onSend, disabled, onFileSelect, uploading, onSchedu
       <button
         type="button"
         title="Mention someone"
+        aria-label="Mention someone"
         className="editor-toolbar-btn"
         onMouseDown={(e) => {
           e.preventDefault();
           editor.chain().focus().insertContent("@").run();
         }}
       >
-        @
+        <AtSign size={18} />
+      </button>
+
+      {onStartCall && (
+        <>
+          <span className="editor-action-divider" />
+
+          <button
+            type="button"
+            title="Start a huddle"
+            aria-label="Start a huddle"
+            data-testid="start-audio-huddle-button"
+            className="editor-toolbar-btn"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onStartCall(false);
+            }}
+          >
+            <Mic size={18} />
+          </button>
+
+          <button
+            type="button"
+            title="Start a video huddle"
+            aria-label="Start a video huddle"
+            data-testid="start-video-huddle-button"
+            className="editor-toolbar-btn"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onStartCall(true);
+            }}
+          >
+            <Video size={18} />
+          </button>
+        </>
+      )}
+
+      <span className="editor-action-divider" />
+
+      <button
+        type="button"
+        title="Slash command"
+        aria-label="Slash command"
+        data-testid="slash-command-button"
+        className="editor-toolbar-btn"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          editor.chain().focus().insertContent("/").run();
+        }}
+      >
+        <SquareSlash size={18} />
       </button>
 
       {/* Right side: combined send + schedule split button */}
@@ -244,9 +327,12 @@ export function RichTextEditor({
   customEmojis,
   slashCommands = [],
   onSlashCommand,
+  onStartCall,
 }: RichTextEditorProps) {
   const [focused, setFocused] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
+  // The Aa control hides the formatting row, as Slack's composer does.
+  const [formattingVisible, setFormattingVisible] = useState(true);
   const [, setTxCount] = useState(0);
 
   // Link dialog state (shared between top bar and bottom bar)
@@ -452,8 +538,8 @@ export function RichTextEditor({
           : "border border-border-input",
       )}
     >
-      {/* Top bar: formatting buttons (slides in on focus) */}
-      <FormattingBar editor={editor} onOpenLinkDialog={openLinkDialog} />
+      {/* Top bar: formatting buttons, toggled by the Aa control below */}
+      {formattingVisible && <FormattingBar editor={editor} onOpenLinkDialog={openLinkDialog} />}
 
       {/* Middle: text area */}
       <EditorContent editor={editor} />
@@ -469,6 +555,9 @@ export function RichTextEditor({
         onScheduleSend={onScheduleSend}
         customEmojis={customEmojis}
         onOpenLinkDialog={openLinkDialog}
+        formattingVisible={formattingVisible}
+        onToggleFormatting={() => setFormattingVisible((v) => !v)}
+        onStartCall={onStartCall}
       />
 
       <LinkDialog

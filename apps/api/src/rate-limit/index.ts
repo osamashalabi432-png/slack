@@ -12,6 +12,7 @@ export {
   rlProfileUpdate,
   rlInviteAdmin,
   rlMemberManage,
+  rlCanvasSave,
   rlRead,
   rlInviteAccept,
   rlInvitePreview,
