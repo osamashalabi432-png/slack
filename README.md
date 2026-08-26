@@ -6,6 +6,8 @@
 
 <p align="center">Open-source team messaging — web, desktop, iOS, and CLI.</p>
 
+<p align="center">A fork of <a href="https://github.com/BilalG1/openslaq">BilalG1/openslaq</a>, self-hosted and extended with huddle controls and backgrounds, Slack themes, a people/channels/groups directory, and a Notion-style canvas. MIT, same as upstream.</p>
+
 ## Get Started
 
 | Platform | |
