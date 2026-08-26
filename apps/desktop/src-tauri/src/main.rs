@@ -12,6 +12,8 @@ use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 const LOCALHOST_PORT: u16 = 3334;
 const AUTOMATION_PORT: u16 = 9199;
 
+mod remote_control;
+
 // ── Automation server (debug builds only) ──────────────────────────
 // Exposes an HTTP server on AUTOMATION_PORT that accepts JSON commands
 // and executes JavaScript in the webview. Used by the `dtk` CLI.
@@ -99,6 +101,20 @@ mod automation {
         match cmd.action.as_str() {
             "ping" => Response { ok: true, data: None, error: None },
 
+            // Lists window labels so a caller can target the right one.
+            "windows" => {
+                let labels: Vec<String> = app
+                    .webview_windows()
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect();
+                Response {
+                    ok: true,
+                    data: Some(serde_json::json!(labels)),
+                    error: None,
+                }
+            }
+
             "eval" => {
                 let script = match cmd.args.first().and_then(|v| v.as_str()) {
                     Some(s) => s.to_string(),
@@ -107,7 +123,13 @@ mod automation {
                         error: Some("eval requires a script string arg".into()),
                     },
                 };
-                match app.get_webview_window("main") {
+                let target_label = cmd
+                    .args
+                    .get(1)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("main")
+                    .to_string();
+                match app.get_webview_window(&target_label) {
                     Some(window) => {
                         // Clear any previous result
                         {
@@ -242,6 +264,8 @@ fn open_huddle_window(app: tauri::AppHandle, channel_id: String, url: String, ti
     {
         #[cfg(target_os = "macos")]
         enable_media_devices(&win);
+        #[cfg(debug_assertions)]
+        win.open_devtools();
         let _ = win.set_focus();
     }
 }
@@ -249,7 +273,7 @@ fn open_huddle_window(app: tauri::AppHandle, channel_id: String, url: String, ti
 fn main() {
     let is_autostarted = std::env::args().any(|arg| arg == "--autostarted");
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_localhost::Builder::new(LOCALHOST_PORT).build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -365,7 +389,24 @@ fn main() {
                 .item(&help_menu)
                 .build()?;
 
+            // Slack shows no in-window menu strip on Windows/Linux; its chrome is
+            // drawn by the app itself. On macOS the menu belongs in the system
+            // menu bar, so it is only attached there.
+            #[cfg(target_os = "macos")]
             app.set_menu(menu_bar)?;
+            #[cfg(not(target_os = "macos"))]
+            let _ = menu_bar;
+
+            // Slack draws its own title bar. Turning off native decorations here
+            // rather than in tauri.conf.json keeps it explicit and platform-aware:
+            // macOS keeps its traffic lights, Windows/Linux get the app's own
+            // chrome in the top bar.
+            #[cfg(not(target_os = "macos"))]
+            {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.set_decorations(false);
+                }
+            }
 
             // ── Tray icon (unchanged) ───────────────────────────────
             let show = MenuItem::with_id(app, "show", "Show OpenSlaq", true, None::<&str>)?;
@@ -484,12 +525,27 @@ fn main() {
                 }
                 // Other windows (e.g. huddle) close normally
             }
-        })
-        .invoke_handler(tauri::generate_handler![
-            open_huddle_window,
-            #[cfg(debug_assertions)]
-            automation::dtk_eval_result,
-        ])
+        });
+
+    // The automation command only exists in debug builds, and a #[cfg] inside
+    // generate_handler! is silently dropped, so the list is branched instead.
+    #[cfg(debug_assertions)]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        open_huddle_window,
+        remote_control::remote_control_set_enabled,
+        remote_control::remote_control_enabled,
+        remote_control::remote_control_input,
+        automation::dtk_eval_result,
+    ]);
+    #[cfg(not(debug_assertions))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        open_huddle_window,
+        remote_control::remote_control_set_enabled,
+        remote_control::remote_control_enabled,
+        remote_control::remote_control_input,
+    ]);
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

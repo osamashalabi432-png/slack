@@ -65,7 +65,15 @@ const mockLocalParticipant = {
 const mockRoom = {
   disconnect: mockRoomDisconnect,
   switchActiveDevice: mockSwitchActiveDevice,
+  on: vi.fn(),
+  off: vi.fn(),
 };
+
+// Captures whatever the huddle broadcasts to the other participants.
+const mockDataSend = vi.fn();
+function sentSignals() {
+  return mockDataSend.mock.calls.map((call) => JSON.parse(new TextDecoder().decode(call[0] as Uint8Array)));
+}
 
 let mockIsMicrophoneEnabled = true;
 let mockIsCameraEnabled = false;
@@ -89,20 +97,39 @@ vi.mock("@livekit/components-react", () => ({
   useRoomContext: () => mockRoom,
   useTracks: () => [],
   useIsSpeaking: () => false,
+  useDataChannel: () => ({ send: mockDataSend }),
 }));
 
+// Menus render inline so their contents are queryable without Radix portals.
 vi.mock("../components/ui", () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({ children, onSelect }: { children: React.ReactNode; onSelect?: () => void }) => (
+    <div onClick={onSelect}>{children}</div>
+  ),
+  DropdownMenuSeparator: () => <hr />,
 }));
+
+interface MockGridParticipant {
+  participant: { identity: string; isMuted?: boolean; handRaised?: boolean; reaction?: string };
+  isLocal: boolean;
+}
 
 vi.mock("../components/huddle/VideoGrid", () => ({
-  VideoGrid: ({ participants }: { participants: { participant: { isMuted?: boolean }; isLocal: boolean }[] }) => (
-    <div data-testid="video-grid">{participants.length} tiles</div>
+  VideoGrid: ({ participants }: { participants: MockGridParticipant[] }) => (
+    <div data-testid="video-grid">
+      {participants.map((p) => (
+        <span
+          key={p.participant.identity}
+          data-testid={`grid-${p.participant.identity}`}
+          data-hand={p.participant.handRaised ? "1" : "0"}
+          data-reaction={p.participant.reaction ?? ""}
+        />
+      ))}
+    </div>
   ),
-}));
-
-vi.mock("../components/huddle/DeviceSelector", () => ({
-  DeviceSelector: () => <div data-testid="device-selector" />,
 }));
 
 // Mock useHuddleToken
@@ -138,6 +165,7 @@ describe("HuddlePage", () => {
     mockRoomDisconnect.mockClear();
     mockSwitchActiveDevice.mockClear();
     mockNotifyHuddleLeave.mockClear();
+    mockDataSend.mockClear();
   });
 
   afterEach(cleanup);
@@ -329,5 +357,83 @@ describe("HuddlePage", () => {
 
     const cameraBtn = screen.getByTestId("huddle-camera-toggle");
     expect(cameraBtn.className).toContain("bg-red-500");
+  });
+
+  test("picking a background repaints the huddle and tells everyone else", async () => {
+    await act(async () => {
+      render(<HuddlePage />);
+    });
+
+    expect(screen.getByTestId("huddle-shell").dataset.background).toBe("midnight");
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByTestId("huddle-background-forest")[0]!);
+    });
+
+    const shell = screen.getByTestId("huddle-shell");
+    expect(shell.dataset.background).toBe("forest");
+    expect(shell.style.background).toContain("linear-gradient");
+    expect(sentSignals()).toContainEqual({ t: "bg", id: "forest" });
+  });
+
+  test("raising a hand marks the local tile and is broadcast", async () => {
+    await act(async () => {
+      render(<HuddlePage />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("huddle-hand-toggle"));
+    });
+
+    expect(screen.getByTestId("grid-user-1").dataset.hand).toBe("1");
+    expect(sentSignals()).toContainEqual({ t: "hand", raised: true });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("huddle-hand-toggle"));
+    });
+
+    expect(screen.getByTestId("grid-user-1").dataset.hand).toBe("0");
+    expect(sentSignals()).toContainEqual({ t: "hand", raised: false });
+  });
+
+  test("a reaction shows on the sender's own tile straight away", async () => {
+    await act(async () => {
+      render(<HuddlePage />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByTestId("huddle-reaction-🎉")[0]!);
+    });
+
+    expect(screen.getByTestId("grid-user-1").dataset.reaction).toBe("🎉");
+    expect(sentSignals()).toContainEqual({ t: "reaction", emoji: "🎉" });
+  });
+
+  test("the invite link points at the standalone huddle route", async () => {
+    await act(async () => {
+      render(<HuddlePage channelId="ch-9" channelName="general" />);
+    });
+
+    const copy = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: copy }, configurable: true });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("huddle-invite"));
+    });
+
+    expect(copy).toHaveBeenCalledWith(expect.stringContaining("/huddle/ch-9?name=general"));
+  });
+
+  test("compact mode drops the wide-only controls", async () => {
+    await act(async () => {
+      render(<HuddlePage inline compact />);
+    });
+
+    // Mic, camera, screen share, overflow and leave stay; the rest move into
+    // the overflow menu, which this test renders inline.
+    expect(screen.getByTestId("huddle-mute-toggle")).toBeTruthy();
+    expect(screen.getByTestId("huddle-leave")).toBeTruthy();
+    expect(screen.queryByTestId("huddle-hand-toggle")).toBeNull();
+    expect(screen.queryByTestId("huddle-audio-settings")).toBeNull();
   });
 });

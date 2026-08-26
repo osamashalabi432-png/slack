@@ -1,6 +1,7 @@
 import type { TrackReferenceOrPlaceholder } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { VideoTile, type HuddleParticipant } from "./VideoTile";
+import { ScreenSharePane } from "./ScreenSharePane";
 
 interface ParticipantEntry {
   participant: HuddleParticipant;
@@ -53,8 +54,8 @@ export function VideoGrid({ participants, trackRefs }: VideoGridProps) {
     return (
       <div className="flex h-full gap-3 p-3" data-testid="video-grid">
         {/* Main screen share area */}
-        <div className="flex-1 min-w-0">
-          <VideoTile
+        <div className="flex-1 min-w-0 min-h-0 flex">
+          <ScreenSharePane
             participant={screenSharer.participant}
             trackRef={screenTrackRef}
             isLocal={screenSharer.isLocal}

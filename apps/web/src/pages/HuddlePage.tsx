@@ -18,11 +18,15 @@ import { useAuthProvider } from "../lib/api-client";
 import { api } from "../api";
 import { useHuddleToken } from "../hooks/chat/useHuddleToken";
 import { VideoGrid } from "../components/huddle/VideoGrid";
-import { DeviceSelector } from "../components/huddle/DeviceSelector";
+import { HuddleControlBar } from "../components/huddle/HuddleControlBar";
+import { useHuddleSignals } from "../components/huddle/useHuddleSignals";
+import { getHuddleBackground } from "../components/huddle/huddle-backgrounds";
+import { useRemoteControl } from "../components/huddle/useRemoteControl";
+import { RemoteControlContext } from "../components/huddle/remote-control-context";
+import { RemoteControlPrompt } from "../components/huddle/RemoteControlPrompt";
 import { classifyMediaError, type PermissionAlert } from "../lib/huddle-errors";
 import type { HuddleParticipant } from "../components/huddle/VideoTile";
-import { Radio, VolumeX, Mic, Video, VideoOff, Monitor, PhoneOff } from "lucide-react";
-import { Tooltip } from "../components/ui";
+import { Radio } from "lucide-react";
 import { isTauri } from "../lib/tauri";
 
 function closeWindow() {
@@ -47,7 +51,12 @@ const ROOM_OPTIONS: RoomOptions = {
   },
 };
 
-function toHuddleParticipant(p: Participant, isSpeaking: boolean): HuddleParticipant {
+function toHuddleParticipant(
+  p: Participant,
+  isSpeaking: boolean,
+  handRaised: boolean,
+  reaction?: string,
+): HuddleParticipant {
   let isMuted = true;
   for (const pub of p.trackPublications.values()) {
     if (pub.source === Track.Source.Microphone) {
@@ -60,31 +69,135 @@ function toHuddleParticipant(p: Participant, isSpeaking: boolean): HuddlePartici
     name: p.name || p.identity,
     isMuted,
     isSpeaking,
+    handRaised,
+    reaction,
   };
 }
 
-export function HuddlePage() {
-  const { channelId } = useParams<{ channelId: string }>();
+interface HuddlePageProps {
+  /** Supplied when docked in the app; falls back to the /huddle route param. */
+  channelId?: string;
+  channelName?: string;
+  /** Fill the parent instead of the viewport, for the docked panel. */
+  inline?: boolean;
+  /** Narrow layout: show only the essential controls. */
+  compact?: boolean;
+  /** How to dismiss. Defaults to closing the window for the standalone route. */
+  onClose?: () => void;
+}
+
+export function HuddlePage({
+  channelId: channelIdProp,
+  channelName: channelNameProp,
+  inline = false,
+  compact = false,
+  onClose,
+}: HuddlePageProps = {}) {
+  const { channelId: routeChannelId } = useParams<{ channelId: string }>();
+  const channelId = channelIdProp ?? routeChannelId;
   const user = useCurrentUser();
-  const channelName = new URLSearchParams(window.location.search).get("name") ?? "Huddle";
+  const channelName =
+    channelNameProp ?? new URLSearchParams(window.location.search).get("name") ?? "Huddle";
+  const dismiss = onClose ?? closeWindow;
+  const shellHeight = inline ? "h-full" : "h-screen";
 
   const { token, wsUrl, error: tokenError } = useHuddleToken(channelId, user);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+  // Leaving has to stop the room reconnecting. On the standalone route the
+  // window cannot always close itself, and a live room would quietly pull the
+  // user back into the huddle they just left.
+  const [hungUp, setHungUp] = useState(false);
+
+  const leave = useCallback(() => {
+    setHungUp(true);
+    dismiss();
+  }, [dismiss]);
+
+  // useHuddleToken deliberately no-ops without a user and reports no error, so
+  // nothing would ever be shown. Give the session a moment, then say so.
+  useEffect(() => {
+    if (user) {
+      setAuthTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setAuthTimedOut(true), 6000);
+    return () => clearTimeout(timer);
+  }, [user]);
 
   const error = tokenError ?? connectError;
 
+  // A teammate can open this straight from the link, so point at the
+  // standalone huddle route rather than wherever this window happens to be.
+  const inviteLink = channelId
+    ? `${window.location.origin}/huddle/${channelId}?name=${encodeURIComponent(channelName)}`
+    : undefined;
+
+  // The huddle opens in its own window, so reflect its state in the title.
+  // Useful in the taskbar, and it makes a stalled window diagnosable from
+  // outside the app when the webview shows nothing.
+  useEffect(() => {
+    let state: string;
+    if (error) state = "error";
+    else if (!user) state = authTimedOut ? "not signed in" : "signing in";
+    else if (!token || !wsUrl) state = "connecting";
+    else state = "connected";
+    if (inline) return;
+    document.title = `${channelName} · ${state}`;
+  }, [error, user, authTimedOut, token, wsUrl, channelName, inline]);
+
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white">
+      <div className={`flex items-center justify-center ${shellHeight} bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white`}>
         <div className="text-center">
           <p className="text-red-400 mb-4">{error}</p>
           <button
             type="button"
-            onClick={() => closeWindow()}
+            onClick={() => dismiss()}
             className="px-4 py-2 bg-white/10 backdrop-blur-xl rounded-full hover:bg-white/20 text-white border-none cursor-pointer"
           >
             Close
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (hungUp) {
+    return (
+      <div
+        className={`flex items-center justify-center ${shellHeight} bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white`}
+        data-testid="huddle-left"
+      >
+        <p className="text-white/60 text-sm">You left the huddle.</p>
+      </div>
+    );
+  }
+
+  if (!token || !wsUrl) {
+    const stalled = !user && authTimedOut;
+    return (
+      <div
+        className={`flex items-center justify-center ${shellHeight} bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white`}
+        data-testid="huddle-pending"
+      >
+        <div className="text-center max-w-sm px-6">
+          <p className={stalled ? "text-amber-300 mb-4" : "text-white/70 mb-4"}>
+            {stalled
+              ? "This huddle window isn't signed in. Make sure you're signed in to the main OpenSlaq window, then start the huddle again."
+              : user
+                ? "Connecting to the huddle…"
+                : "Signing in…"}
+          </p>
+          {stalled && (
+            <button
+              type="button"
+              onClick={() => dismiss()}
+              className="px-4 py-2 bg-white/10 backdrop-blur-xl rounded-full hover:bg-white/20 text-white border-none cursor-pointer"
+            >
+              Close
+            </button>
+          )}
         </div>
       </div>
     );
@@ -102,15 +215,33 @@ export function HuddlePage() {
       }}
       // Render as a plain div wrapper
       data-lk-theme="default"
-      style={{ height: "100vh" }}
+      style={{ height: inline ? "100%" : "100vh" }}
     >
       <RoomAudioRenderer />
-      <HuddlePageContent channelName={channelName} />
+      <HuddlePageContent
+        channelName={channelName}
+        shellHeight={shellHeight}
+        compact={compact}
+        inviteLink={inviteLink}
+        onLeave={leave}
+      />
     </LiveKitRoom>
   );
 }
 
-function HuddlePageContent({ channelName }: { channelName: string }) {
+function HuddlePageContent({
+  channelName,
+  shellHeight,
+  compact,
+  inviteLink,
+  onLeave,
+}: {
+  channelName: string;
+  shellHeight: string;
+  compact: boolean;
+  inviteLink?: string;
+  onLeave: () => void;
+}) {
   const room = useRoomContext();
   const connectionState = useConnectionState();
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } = useLocalParticipant();
@@ -126,6 +257,35 @@ function HuddlePageContent({ channelName }: { channelName: string }) {
   const auth = useAuthProvider();
   const apiDeps = useMemo(() => ({ api, auth }), [auth]);
 
+  // Whoever is presenting, and — when that is us — what kind of surface it is.
+  // Only a whole monitor can be driven remotely, because a window is captured
+  // at an offset the other side cannot know.
+  const screenTrack = trackRefs.find((t) => t.source === Track.Source.ScreenShare);
+  const sharerIdentity = screenTrack?.participant.identity;
+  const shareSurface = isScreenShareEnabled
+    ? localParticipant
+        .getTrackPublication(Track.Source.ScreenShare)
+        ?.track?.mediaStreamTrack.getSettings().displaySurface
+    : undefined;
+
+  const remoteControl = useRemoteControl({
+    localIdentity: localParticipant.identity,
+    isSharing: isScreenShareEnabled,
+    shareSurface,
+    sharerIdentity,
+  });
+
+  const {
+    backgroundId,
+    setBackground,
+    raisedHands,
+    handRaised,
+    toggleHand,
+    reactions,
+    sendReaction,
+  } = useHuddleSignals(localParticipant.identity);
+  const background = getHuddleBackground(backgroundId);
+
   // Auto-enable mic on first connect — if permission denied, join muted
   useEffect(() => {
     if (!connected || micInitialized) return;
@@ -133,13 +293,21 @@ function HuddlePageContent({ channelName }: { channelName: string }) {
     localParticipant.setMicrophoneEnabled(true).catch((err) => {
       console.warn("Microphone unavailable, joining muted:", err);
     });
+
+    // Started from the composer's camera button, so open with video on.
+    const wantsVideo = new URLSearchParams(window.location.search).get("video") === "1";
+    if (wantsVideo) {
+      localParticipant.setCameraEnabled(true).catch((err) => {
+        console.warn("Camera unavailable, joining without video:", err);
+      });
+    }
   }, [connected, micInitialized, localParticipant]);
 
   const handleLeave = useCallback(() => {
     room.disconnect();
     notifyHuddleLeave(apiDeps);
-    closeWindow();
-  }, [room, apiDeps]);
+    onLeave();
+  }, [room, apiDeps, onLeave]);
 
   const toggleMute = useCallback(async () => {
     try {
@@ -177,16 +345,19 @@ function HuddlePageContent({ channelName }: { channelName: string }) {
     }
   }, [localParticipant, isScreenShareEnabled]);
 
-  const switchAudioDevice = useCallback(async (deviceId: string) => {
-    try {
-      await room.switchActiveDevice("audioinput", deviceId);
-    } catch {
-      setPermissionAlert({
-        title: "Could not switch device",
-        description: "The selected device is unavailable. Try a different one.",
-      });
-    }
-  }, [room]);
+  const switchDevice = useCallback(
+    async (kind: MediaDeviceKind, deviceId: string) => {
+      try {
+        await room.switchActiveDevice(kind, deviceId);
+      } catch {
+        setPermissionAlert({
+          title: "Could not switch device",
+          description: "The selected device is unavailable. Try a different one.",
+        });
+      }
+    },
+    [room],
+  );
 
   // beforeunload cleanup
   useEffect(() => {
@@ -203,24 +374,49 @@ function HuddlePageContent({ channelName }: { channelName: string }) {
     const entries = [];
     if (connected) {
       entries.push({
-        participant: toHuddleParticipant(localParticipant, localIsSpeaking),
+        participant: toHuddleParticipant(
+          localParticipant,
+          localIsSpeaking,
+          !!raisedHands[localParticipant.identity],
+          reactions[localParticipant.identity],
+        ),
         isLocal: true,
       });
     }
+    // A reconnect can briefly leave the previous session listed as a remote
+    // with our own identity; rendering it twice breaks the grid keys.
+    const seen = new Set(entries.map((e) => e.participant.identity));
     for (const rp of remoteParticipants) {
+      if (seen.has(rp.identity)) continue;
+      seen.add(rp.identity);
       entries.push({
-        participant: toHuddleParticipant(rp, rp.isSpeaking),
+        participant: toHuddleParticipant(
+          rp,
+          rp.isSpeaking,
+          !!raisedHands[rp.identity],
+          reactions[rp.identity],
+        ),
         isLocal: false,
       });
     }
     return entries;
-  }, [connected, localParticipant, localIsSpeaking, remoteParticipants]);
+  }, [connected, localParticipant, localIsSpeaking, remoteParticipants, raisedHands, reactions]);
 
   const participantCount = participants.length;
-  const isMuted = !isMicrophoneEnabled;
+
+  const nameFor = useCallback(
+    (identity: string) =>
+      participants.find((p) => p.participant.identity === identity)?.participant.name ?? identity,
+    [participants],
+  );
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white relative">
+    <div
+      className={`flex flex-col ${shellHeight} text-white relative`}
+      style={{ background: background.css }}
+      data-testid="huddle-shell"
+      data-background={backgroundId}
+    >
       {/* Permission alert overlay */}
       {permissionAlert && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
@@ -255,10 +451,14 @@ function HuddlePageContent({ channelName }: { channelName: string }) {
         </div>
       </div>
 
+      <RemoteControlPrompt control={remoteControl} nameFor={nameFor} />
+
       {/* Video grid */}
       <div className="flex-1 min-h-0">
         {connected ? (
-          <VideoGrid participants={participants} trackRefs={trackRefs} />
+          <RemoteControlContext.Provider value={remoteControl}>
+            <VideoGrid participants={participants} trackRefs={trackRefs} />
+          </RemoteControlContext.Provider>
         ) : (
           <div className="flex items-center justify-center h-full text-white/40 text-sm">
             Connecting...
@@ -266,66 +466,25 @@ function HuddlePageContent({ channelName }: { channelName: string }) {
         )}
       </div>
 
-      {/* Floating control bar */}
-      <div className="flex items-center justify-center pb-4 px-4">
-        <div className="flex items-center gap-2 backdrop-blur-xl bg-white/10 border border-white/10 rounded-full px-4 py-2.5 shadow-xl">
-          <Tooltip content={isMuted ? "Unmute" : "Mute"}>
-            <button
-              type="button"
-              onClick={toggleMute}
-              className={`p-2 rounded-full transition-colors ${isMuted ? "bg-red-500/80 hover:bg-red-500" : "bg-white/10 hover:bg-white/20"}`}
-              data-testid="huddle-mute-toggle"
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5" />
-              ) : (
-                <Mic className="w-5 h-5" />
-              )}
-            </button>
-          </Tooltip>
-
-          <Tooltip content={isCameraEnabled ? "Turn off camera" : "Turn on camera"}>
-            <button
-              type="button"
-              onClick={toggleCamera}
-              className={`p-2 rounded-full transition-colors ${!isCameraEnabled ? "bg-red-500/80 hover:bg-red-500" : "bg-white/10 hover:bg-white/20"}`}
-              data-testid="huddle-camera-toggle"
-            >
-              {isCameraEnabled ? (
-                <Video className="w-5 h-5" />
-              ) : (
-                <VideoOff className="w-5 h-5" />
-              )}
-            </button>
-          </Tooltip>
-
-          <Tooltip content={isScreenShareEnabled ? "Stop sharing" : "Share screen"}>
-            <button
-              type="button"
-              onClick={toggleScreenShare}
-              className={`p-2 rounded-full transition-colors ${isScreenShareEnabled ? "bg-blue-500/80 hover:bg-blue-500" : "bg-white/10 hover:bg-white/20"}`}
-              data-testid="huddle-screenshare-toggle"
-            >
-              <Monitor className="w-5 h-5" />
-            </button>
-          </Tooltip>
-
-          <DeviceSelector onSelectDevice={switchAudioDevice} />
-
-          <div className="w-px h-6 bg-white/20 mx-1" />
-
-          <Tooltip content="Leave huddle">
-            <button
-              type="button"
-              onClick={handleLeave}
-              className="p-2 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors"
-              data-testid="huddle-leave"
-            >
-              <PhoneOff className="w-5 h-5" />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
+      <HuddleControlBar
+        compact={compact}
+        isMuted={!isMicrophoneEnabled}
+        onToggleMute={toggleMute}
+        isCameraEnabled={isCameraEnabled}
+        onToggleCamera={toggleCamera}
+        isScreenShareEnabled={isScreenShareEnabled}
+        onToggleScreenShare={toggleScreenShare}
+        handRaised={handRaised}
+        onToggleHand={toggleHand}
+        onReaction={sendReaction}
+        backgroundId={backgroundId}
+        onSelectBackground={setBackground}
+        onSelectAudioInput={(id) => switchDevice("audioinput", id)}
+        onSelectAudioOutput={(id) => switchDevice("audiooutput", id)}
+        onSelectVideoInput={(id) => switchDevice("videoinput", id)}
+        inviteLink={inviteLink}
+        onLeave={handleLeave}
+      />
     </div>
   );
 }

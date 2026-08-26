@@ -1,0 +1,20 @@
+{
+  "build": {
+    "beforeBuildCommand": "cd ../web && bun run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "OpenSlaq",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "transparent": true
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["nsis"]
+  }
+}
