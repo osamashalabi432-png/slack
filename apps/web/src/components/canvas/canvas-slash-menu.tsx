@@ -106,6 +106,20 @@ export const CANVAS_BLOCKS: CanvasBlockItem[] = [
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
   {
+    id: "table",
+    title: "Table",
+    hint: "An empty table — add rows and columns as you go",
+    keywords: ["table", "grid", "rows", "columns", "spreadsheet", "cells"],
+    icon: <Table2 className="w-4 h-4" />,
+    run: (editor, range) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run(),
+  },
+  {
     id: "divider",
     title: "Divider",
     hint: "Visually separate sections",
@@ -200,17 +214,10 @@ export function dataBlockItems(
       <LayoutGrid className="w-4 h-4" />,
     ),
     make(
-      "table",
-      "Table",
-      "Rows and columns with typed cells",
-      ["table", "grid", "rows", "spreadsheet"],
-      <Table2 className="w-4 h-4" />,
-    ),
-    make(
       "full",
       "Database",
-      "Board and table in one block",
-      ["database", "project", "tasks", "all"],
+      "Typed columns with board and table views",
+      ["database", "project", "tasks", "all", "typed"],
       <Table2 className="w-4 h-4" />,
     ),
   ];

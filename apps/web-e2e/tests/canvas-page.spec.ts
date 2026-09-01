@@ -67,11 +67,84 @@ test("database blocks still work inside a canvas page", async ({ page, testWorks
   // they read their channel from the tab's context.
   const body = page.locator(".tiptap").first();
   await body.click();
+  await body.pressSequentially("/database");
+  await expect(page.getByTestId("canvas-slash-menu")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("canvas-block-database").click();
+
+  await expect(page.locator('[data-testid^="db-block-"]').first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("page-error")).toHaveCount(0);
+});
+
+test("the /table block inserts a plain, editable grid", async ({ page, testWorkspace }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await setupMockAuth(page);
+  await page.goto(`/w/${testWorkspace.slug}`);
+  await page.getByText("# general").click();
+  await expect(page.locator(".tiptap")).toBeVisible();
+  await page.getByTestId("channel-tab-add").click();
+  await page.getByTestId("channel-tab-add-canvas").click();
+  await expect(page.getByTestId("page-view")).toBeVisible({ timeout: 20_000 });
+
+  const body = page.locator(".tiptap").first();
+  await body.click();
   await body.pressSequentially("/table");
   await expect(page.getByTestId("canvas-slash-menu")).toBeVisible({ timeout: 10_000 });
   await page.getByTestId("canvas-block-table").click();
 
-  await expect(page.locator('[data-testid^="db-block-"]').first()).toBeVisible({ timeout: 20_000 });
+  // A real HTML table, 3 columns wide, header row + two body rows.
+  const table = body.locator("table");
+  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expect(table.locator("tr").first().locator("th")).toHaveCount(3);
+  await expect(table.locator("tr")).toHaveCount(3);
+
+  // Cells take typed text.
+  const firstCell = table.locator("td, th").first();
+  await firstCell.click();
+  await page.keyboard.type("Region");
+  await expect(firstCell).toContainText("Region");
+
+  // The contextual toolbar grows a row/column.
+  await page.getByRole("button", { name: "Add row" }).click();
+  await expect(table.locator("tr")).toHaveCount(4);
+  await page.getByRole("button", { name: "Add column" }).click();
+  await expect(table.locator("tr").first().locator("th")).toHaveCount(4);
+
+  await expect(page.getByTestId("page-error")).toHaveCount(0);
+});
+
+test("the block gutter adds a line and turns a block into a heading", async ({
+  page,
+  testWorkspace,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await setupMockAuth(page);
+  await page.goto(`/w/${testWorkspace.slug}`);
+  await page.getByText("# general").click();
+  await expect(page.locator(".tiptap")).toBeVisible();
+  await page.getByTestId("channel-tab-add").click();
+  await page.getByTestId("channel-tab-add-canvas").click();
+  await expect(page.getByTestId("page-view")).toBeVisible({ timeout: 20_000 });
+
+  const body = page.locator(".tiptap").first();
+  await body.click();
+  await body.pressSequentially("First line");
+  await page.keyboard.press("Enter");
+  await body.pressSequentially("Second line");
+
+  // Hover the first line to summon the gutter, then add an empty line under it.
+  await body.locator("p").first().hover();
+  await expect(page.getByTestId("canvas-block-add")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("canvas-block-add").click();
+  await expect(body.locator("p")).toHaveCount(3);
+
+  // Open the block menu from the grip and turn the first line into a heading.
+  await body.locator("p").first().hover();
+  await page.getByTestId("canvas-drag-handle").click();
+  await expect(page.getByTestId("canvas-block-menu")).toBeVisible({ timeout: 10_000 });
+  await page.getByText("Turn into").hover();
+  await page.getByTestId("canvas-turn-h1").click();
+  await expect(body.locator("h1")).toHaveText("First line");
+
   await expect(page.getByTestId("page-error")).toHaveCount(0);
 });
 

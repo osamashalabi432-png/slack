@@ -143,7 +143,7 @@ export function PageView({
         </div>
       )}
 
-      <div className="px-10 pt-4 pb-2 shrink-0">
+      <div className="px-14 pt-4 pb-2 shrink-0">
         <nav className="flex items-center gap-1 text-xs text-muted mb-3" data-testid="page-breadcrumbs">
           {page.breadcrumbs.map((crumb) => {
             const live = pageLinks.lookup(crumb.id as string);
@@ -268,7 +268,7 @@ export function PageView({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 px-10 pb-10">
+      <div className="flex-1 min-h-0 px-14 pb-10">
         <PageLinkProvider value={pageLinks}>
           <ImageSourceProvider resolve={images.resolve}>
             <CanvasEditor

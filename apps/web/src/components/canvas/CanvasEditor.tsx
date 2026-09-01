@@ -6,6 +6,7 @@ import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TaskList, TaskItem } from "@tiptap/extension-list";
+import { TableKit } from "@tiptap/extension-table";
 import { CodeBlockShiki } from "tiptap-extension-code-block-shiki";
 import type { CanvasContent, DatabasePreset } from "@openslaq/shared";
 import clsx from "clsx";
@@ -25,9 +26,14 @@ import {
   Minus,
   Undo2,
   Redo2,
+  Table2,
+  BetweenVerticalEnd,
+  BetweenHorizontalEnd,
+  Columns3,
+  Rows3,
+  Trash2,
 } from "lucide-react";
-import { DragHandle } from "@tiptap/extension-drag-handle-react";
-import { GripVertical } from "lucide-react";
+import { CanvasBlockHandle } from "./CanvasBlockHandle";
 import { CanvasSlashMenu } from "./canvas-slash-menu";
 import { CanvasDatabaseNode } from "./CanvasDatabaseNode";
 import { PageLinkNode } from "./PageLinkNode";
@@ -155,6 +161,44 @@ function CanvasToolbar({ editor }: { editor: Editor }) {
         label="Divider"
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
       />
+      <ToolButton
+        icon={<Table2 className="w-4 h-4" />}
+        label="Insert table"
+        active={editor.isActive("table")}
+        onClick={() =>
+          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+        }
+      />
+      {editor.isActive("table") && (
+        <>
+          <Divider />
+          <ToolButton
+            icon={<BetweenVerticalEnd className="w-4 h-4" />}
+            label="Add column"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+          />
+          <ToolButton
+            icon={<Columns3 className="w-4 h-4" />}
+            label="Delete column"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+          />
+          <ToolButton
+            icon={<BetweenHorizontalEnd className="w-4 h-4" />}
+            label="Add row"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+          />
+          <ToolButton
+            icon={<Rows3 className="w-4 h-4" />}
+            label="Delete row"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+          />
+          <ToolButton
+            icon={<Trash2 className="w-4 h-4" />}
+            label="Delete table"
+            onClick={() => editor.chain().focus().deleteTable().run()}
+          />
+        </>
+      )}
       <Divider />
       <ToolButton
         icon={<Undo2 className="w-4 h-4" />}
@@ -371,6 +415,9 @@ export function CanvasEditor({
         heading: { levels: [1, 2, 3] },
       }),
       CodeBlockShiki.configure({ defaultTheme: "github-dark" }),
+      TableKit.configure({
+        table: { resizable: true, HTMLAttributes: { class: "canvas-table" } },
+      }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
       TaskList,
@@ -458,17 +505,7 @@ export function CanvasEditor({
       {editable && <CanvasToolbar editor={editor} />}
       <div className="flex-1 overflow-y-auto">
         <div className="w-full px-8 py-6">
-          {editable && (
-            <DragHandle editor={editor} nested>
-              <div
-                data-testid="canvas-drag-handle"
-                title="Drag to move"
-                className="flex items-center justify-center w-5 h-6 mr-1 rounded text-faint hover:text-secondary hover:bg-surface-hover cursor-grab active:cursor-grabbing transition-colors"
-              >
-                <GripVertical className="w-4 h-4" />
-              </div>
-            </DragHandle>
-          )}
+          {editable && <CanvasBlockHandle editor={editor} />}
           <EditorContent editor={editor} />
         </div>
       </div>

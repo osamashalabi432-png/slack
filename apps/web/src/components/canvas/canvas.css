@@ -116,8 +116,15 @@
   gap: 0.55em;
 }
 
+/*
+ * Sit the checkbox on the optical centre of the first text line rather than a
+ * fixed nudge — a fixed margin drifts as soon as the line-height or font size
+ * changes, which is what left the box looking low.
+ */
 .canvas-doc ul[data-type="taskList"] li > label {
-  margin-top: 0.35em;
+  display: flex;
+  align-items: center;
+  height: 1.7em;
   user-select: none;
 }
 
@@ -158,4 +165,65 @@
 .canvas-database-node ol {
   list-style: none;
   padding-left: 0;
+}
+
+/*
+ * Plain tables (the "/table" block). ProseMirror wraps a resizable table in
+ * .tableWrapper and manages <colgroup> widths; everything here is just paint.
+ */
+.canvas-doc .tableWrapper {
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.canvas-doc table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+}
+
+.canvas-doc table td,
+.canvas-doc table th {
+  position: relative;
+  min-width: 6em;
+  border: 1px solid var(--border-strong);
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.canvas-doc table th {
+  background: var(--surface-secondary);
+  font-weight: 600;
+  text-align: left;
+}
+
+.canvas-doc table p {
+  margin: 0;
+}
+
+/* Cells caught in a multi-cell selection. */
+.canvas-doc table .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--surface-selected);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Blue bar shown while dragging a column border. */
+.canvas-doc table .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 3px;
+  background: var(--color-slaq-blue, #1264a3);
+  pointer-events: none;
+}
+
+.canvas-doc .tableWrapper.resize-cursor {
+  cursor: col-resize;
 }

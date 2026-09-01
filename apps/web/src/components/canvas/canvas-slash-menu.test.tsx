@@ -1,4 +1,5 @@
 import { describe, test, expect, afterEach, vi } from "vitest";
+import type { Editor, Range } from "@tiptap/core";
 import { render, screen, cleanup } from "../../test-utils";
 import { fireEvent } from "@testing-library/react";
 import {
@@ -33,6 +34,31 @@ describe("filterCanvasBlocks", () => {
   test("every block has a distinct id", () => {
     const ids = CANVAS_BLOCKS.map((b) => b.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("the plain table block", () => {
+  test("clears the slash query, then drops in a 3x3 table with a header row", () => {
+    const block = CANVAS_BLOCKS.find((b) => b.id === "table");
+    expect(block).toBeDefined();
+
+    const run = vi.fn();
+    const insertTable = vi.fn(() => ({ run }));
+    const deleteRange = vi.fn(() => ({ insertTable }));
+    const focus = vi.fn(() => ({ deleteRange }));
+    const editor = { chain: () => ({ focus }) } as unknown as Editor;
+    const range = { from: 0, to: 6 } as Range;
+
+    block!.run(editor, range);
+
+    expect(deleteRange).toHaveBeenCalledWith(range);
+    expect(insertTable).toHaveBeenCalledWith({ rows: 3, cols: 3, withHeaderRow: true });
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  test("is reachable by its spreadsheet-ish keywords", () => {
+    expect(filterCanvasBlocks("grid").map((b) => b.id)).toContain("table");
+    expect(filterCanvasBlocks("spreadsheet").map((b) => b.id)).toContain("table");
   });
 });
 

@@ -1,5 +1,5 @@
 import { authorizedRequest } from "../api/api-client";
-import type { SavedFolderItem } from "@openslaq/shared";
+import type { FolderRef, SavedFolderItem } from "@openslaq/shared";
 import type { OperationDeps } from "./types";
 
 type Deps = Pick<OperationDeps, "api" | "auth">;
@@ -20,6 +20,28 @@ export async function fetchSavedItemIds(
   );
   const data = (await res.json()) as { itemIds: string[] };
   return data.itemIds;
+}
+
+/**
+ * Resolve a folder entry that was @-mentioned in a message: its current name
+ * and a freshly signed download URL. 404s when the entry is not in a folder tab
+ * of this channel — that is how mentions stay scoped to the same section.
+ */
+export async function fetchFolderRef(
+  deps: Deps,
+  params: { workspaceSlug: string; channelId: string; tabId: string; itemId: string },
+): Promise<FolderRef> {
+  const { api, auth } = deps;
+  const { workspaceSlug, channelId, tabId, itemId } = params;
+
+  const res = await authorizedRequest(auth, (headers) =>
+    api.api.workspaces[":slug"].channels[":id"].tabs[":tabId"].items[":itemId"]["download-url"].$get(
+      { param: { slug: workspaceSlug, id: channelId, tabId, itemId } },
+      { headers },
+    ),
+  );
+  if (!res.ok) throw new Error(`Failed to resolve folder entry (${res.status})`);
+  return (await res.json()) as FolderRef;
 }
 
 export async function saveFolderItemOp(
