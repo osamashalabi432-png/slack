@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import type { Message } from "@openslaq/shared";
 import { useMessageActionsContext } from "./MessageActionsContext";
 import { MessageContent } from "./MessageContent";
@@ -38,6 +39,7 @@ export function MessageItem({
     savedMessageIds,
     customEmojis,
   } = useMessageActionsContext();
+  const { workspaceSlug } = useParams<{ workspaceSlug: string }>();
 
   const isSaved = savedMessageIds?.includes(message.id);
   const isTopLevel = !message.parentMessageId;
@@ -196,7 +198,7 @@ export function MessageItem({
               {message.sharedMessage && (
                 <SharedMessageBlock sharedMessage={message.sharedMessage} />
               )}
-              {message.content && <MessageContent content={message.content} mentions={message.mentions} onOpenProfile={onOpenProfile} customEmojis={customEmojis} />}
+              {message.content && <MessageContent content={message.content} mentions={message.mentions} onOpenProfile={onOpenProfile} customEmojis={customEmojis} workspaceSlug={workspaceSlug} channelId={message.channelId} />}
               {message.attachments?.length > 0 && (
                 <MessageAttachments attachments={message.attachments} />
               )}

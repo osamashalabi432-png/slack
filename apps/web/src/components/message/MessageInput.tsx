@@ -8,6 +8,7 @@ import { useFileUpload } from "../../hooks/useFileUpload";
 import { useDraftMessage } from "../../hooks/useDraftMessage";
 import { useMessageMutations } from "../../hooks/chat/useMessageMutations";
 import { useWorkspaceMembersApi } from "../../hooks/api/useWorkspaceMembersApi";
+import { useChannelFolderFiles } from "../../hooks/chat/useChannelFolderFiles";
 import * as Sentry from "@sentry/react";
 import { AuthError } from "../../lib/errors";
 import { redirectToAuth } from "../../lib/auth";
@@ -59,6 +60,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
     });
     const { listMembers } = useWorkspaceMembersApi();
     const [mentionMembers, setMentionMembers] = useState<MentionSuggestionItem[]>([]);
+    const folderFiles = useChannelFolderFiles(workspaceSlug, channelId);
 
     useEffect(() => {
       if (!workspaceSlug) return;
@@ -283,6 +285,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
           onContentChange={handleContentChange}
           filePreview={filePreview}
           members={mentionMembers}
+          files={folderFiles}
           onScheduleSend={!parentMessageId ? handleScheduleSend : undefined}
           customEmojis={state.customEmojis.map((e) => ({ id: e.id, name: e.name, url: e.url }))}
           slashCommands={slashCommands}

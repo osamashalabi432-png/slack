@@ -10,13 +10,15 @@ import {
   zChannelTabId,
   CHANNEL_TAB_TYPES,
 } from "@openslaq/shared";
-import type { CanvasContent, ChannelTab, ChannelTabType } from "@openslaq/shared";
+import type { CanvasContent, ChannelTab, ChannelTabType, FolderContent, FolderItem } from "@openslaq/shared";
 import { listTabs, getTab, createTab, renameTab, saveCanvasContent, deleteTab } from "./tab-service";
 import {
   saveFolderItem,
   unsaveFolderItem,
   listSavedItemIdsForTab,
 } from "./saved-folder-item-service";
+import { getAttachmentById } from "../uploads/service";
+import { getPresignedDownloadUrl } from "../uploads/s3";
 import { emitToChannel } from "../lib/emit";
 import { okSchema, errorSchema } from "../openapi/schemas";
 import { BadRequestError, NotFoundError } from "../errors";
@@ -191,6 +193,36 @@ const unsaveItemRoute = createRoute({
   },
 });
 
+const folderRefSchema = z.object({
+  name: z.string(),
+  kind: z.enum(["file", "link"]),
+  downloadUrl: z.string(),
+});
+
+const folderRefRoute = createRoute({
+  method: "get",
+  path: "/:id/tabs/:tabId/items/:itemId/download-url",
+  tags: ["Channel Tabs"],
+  summary: "Resolve a folder entry mentioned in chat",
+  description:
+    "Returns the display name and a freshly signed download URL for a folder entry. " +
+    "The channel-membership check is what limits @-mentions to files in the same channel.",
+  security: BEARER_SECURITY,
+  middleware: [rlRead, resolveChannel, requireChannelMember] as const,
+  request: { params: itemParams },
+  responses: {
+    200: jsonContent(folderRefSchema, "Resolved folder entry"),
+    404: jsonContent(errorSchema, "Tab or entry not found"),
+  },
+});
+
+/** One entry out of a folder tab's stored body. */
+function findFolderItem(content: unknown, itemId: string): FolderItem | null {
+  const items = (content as FolderContent | null)?.items;
+  if (!Array.isArray(items)) return null;
+  return items.find((i) => i.id === itemId) ?? null;
+}
+
 interface TabRow {
   id: string;
   channelId: string;
@@ -340,6 +372,32 @@ const app = new OpenAPIHono<WorkspaceMemberEnv>()
     if (!removed) throw new NotFoundError("Saved entry");
 
     return c.json({ ok: true as const }, 200);
+  })
+  .openapi(folderRefRoute, async (c) => {
+    const { channel } = getChannelContext(c);
+    const { tabId, itemId } = c.req.valid("param");
+
+    // The tab has to belong to *this* channel — that, plus requireChannelMember
+    // above, is the "same section only" rule for file mentions.
+    const tab = await getTab(channel.id, tabId);
+    if (!tab || tab.type !== "folder") throw new NotFoundError("Tab");
+
+    const item = findFolderItem(tab.content, itemId);
+    if (!item) throw new NotFoundError("File");
+
+    if (item.kind === "link") {
+      return c.json({ name: item.name, kind: "link" as const, downloadUrl: item.url }, 200);
+    }
+
+    // A folder file's entry id is its attachment id; re-sign the stored key so
+    // the link is valid however long the message has been sitting in history.
+    const attachment = await getAttachmentById(itemId);
+    if (!attachment) throw new NotFoundError("File");
+
+    return c.json(
+      { name: item.name, kind: "file" as const, downloadUrl: getPresignedDownloadUrl(attachment.storageKey) },
+      200,
+    );
   })
   .openapi(deleteTabRoute, async (c) => {
     const { channel } = getChannelContext(c);

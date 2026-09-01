@@ -23,6 +23,44 @@ describe("createMentionSuggestion", () => {
     expect(items({ query: "bo", editor: {} as never })).toEqual([{ id: "u2", displayName: "Bob" }]);
   });
 
+  it("merges channel files from the third getter, below people", async () => {
+    const suggestion = createMentionSuggestion(
+      () => [{ id: "u1", displayName: "Report Owner" }],
+      undefined,
+      () => [{ id: "file:t1:a1", displayName: "report.pdf", isFile: true, fileKind: "file" }],
+    );
+    // Tiptap types this as possibly async, so it is awaited even though the
+    // suggestion answers straight away.
+    const result = await suggestion.items!({ query: "report", editor: {} as never });
+    expect(result.map((i) => i.id)).toEqual(["u1", "file:t1:a1"]);
+  });
+
+  it("command inserts a mention node carrying the display name as label", () => {
+    const suggestion = createMentionSuggestion(() => []);
+    const run = () => {};
+    const insertContentAt = (_range: unknown, content: unknown) => {
+      inserted = content;
+      return { run };
+    };
+    let inserted: unknown;
+    const chain = () => ({ focus: () => ({ insertContentAt }) });
+    const editor = {
+      chain,
+      view: { state: { selection: { $to: { nodeAfter: null } } } },
+    } as never;
+
+    suggestion.command!({
+      editor,
+      range: { from: 0, to: 5 },
+      props: { id: "file:t1:a1", displayName: "report.pdf" },
+    } as never);
+
+    expect(inserted).toEqual([
+      { type: "mention", attrs: { id: "file:t1:a1", label: "report.pdf" } },
+      { type: "text", text: " " },
+    ]);
+  });
+
   it("Escape removes the container from the DOM", () => {
     const suggestion = createMentionSuggestion(() => []);
     const lifecycle = suggestion.render!();

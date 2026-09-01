@@ -54,7 +54,7 @@ vi.mock("../../hooks/useCurrentUser", () => ({
 
 vi.mock("../../state/chat-store", () => ({
   useChatStore: () => ({
-    state: { customEmojis: [] },
+    state: { customEmojis: [], channelTabs: {}, activeTabId: null },
     dispatch: vi.fn(),
   }),
 }));

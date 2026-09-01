@@ -1,10 +1,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { FileText, Link2 } from "lucide-react";
 
 export interface MentionSuggestionItem {
   id: string;
   displayName: string;
   avatarUrl?: string | null;
   isGroup?: boolean;
+  /** A folder entry from this channel, mentionable alongside people. */
+  isFile?: boolean;
+  fileKind?: "file" | "link";
 }
 
 interface MentionSuggestionListProps {
@@ -17,6 +21,14 @@ export interface MentionSuggestionListRef {
 }
 
 function AvatarFallback({ item }: { item: MentionSuggestionItem }) {
+  if (item.isFile) {
+    return (
+      <span className="w-6 h-6 rounded flex items-center justify-center bg-surface-secondary text-secondary">
+        {item.fileKind === "link" ? <Link2 className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+      </span>
+    );
+  }
+
   if (item.isGroup) {
     return (
       <span className="w-6 h-6 rounded flex items-center justify-center bg-surface-secondary text-xs font-bold">
@@ -83,19 +95,25 @@ export const MentionSuggestionList = forwardRef<MentionSuggestionListRef, Mentio
     return (
       <div className="bg-surface border border-border-default rounded-lg shadow-lg overflow-hidden max-h-[240px] overflow-y-auto min-w-[220px]">
         {items.map((item, index) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => command(item)}
-            className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer border-none ${
-              index === selectedIndex
-                ? "bg-slaq-blue/10 text-slaq-blue"
-                : "bg-transparent text-primary hover:bg-surface-hover"
-            }`}
-          >
-            <AvatarFallback item={item} />
-            <span className="truncate">{item.displayName}</span>
-          </button>
+          <div key={item.id}>
+            {item.isFile && !items[index - 1]?.isFile && (
+              <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Files in this channel
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => command(item)}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left cursor-pointer border-none ${
+                index === selectedIndex
+                  ? "bg-slaq-blue/10 text-slaq-blue"
+                  : "bg-transparent text-primary hover:bg-surface-hover"
+              }`}
+            >
+              <AvatarFallback item={item} />
+              <span className="truncate">{item.displayName}</span>
+            </button>
+          </div>
         ))}
       </div>
     );

@@ -15,7 +15,10 @@ vi.mock("../../hooks/useCurrentUser", () => ({
   useCurrentUser: () => ({ id: "u1", displayName: "Test", getAuthJson: async () => ({ accessToken: "t" }) }),
 }));
 vi.mock("../../state/chat-store", () => ({
-  useChatStore: () => ({ state: { customEmojis: [] }, dispatch: () => {} }),
+  useChatStore: () => ({
+    state: { customEmojis: [], channelTabs: {}, activeTabId: null },
+    dispatch: () => {},
+  }),
 }));
 vi.mock("../../hooks/chat/useMessageMutations", () => ({
   useMessageMutations: () => ({ sendMessage: vi.fn(), toggleReaction: vi.fn(), editMessage: vi.fn(), deleteMessage: vi.fn(), markAsUnread: vi.fn() }),

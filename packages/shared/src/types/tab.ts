@@ -53,6 +53,37 @@ export interface FolderContent {
   items: FolderItem[];
 }
 
+/**
+ * A folder entry referenced from a chat message, resolved on demand. The
+ * download URL is freshly signed each call because presigned URLs expire.
+ */
+export interface FolderRef {
+  name: string;
+  kind: "file" | "link";
+  downloadUrl: string;
+}
+
+/**
+ * Files live in a channel's folder tabs and can be @-mentioned in that same
+ * channel's messages. The mention is stored as `<@file:<tabId>:<itemId>>`, so
+ * it rides the existing `<@…>` token namespace next to `here` / `group:`.
+ */
+export const FILE_MENTION_PREFIX = "file:";
+
+export function formatFileMentionId(tabId: string, itemId: string): string {
+  return `${FILE_MENTION_PREFIX}${tabId}:${itemId}`;
+}
+
+export function parseFileMentionId(
+  value: string,
+): { tabId: string; itemId: string } | null {
+  if (!value.startsWith(FILE_MENTION_PREFIX)) return null;
+  const rest = value.slice(FILE_MENTION_PREFIX.length);
+  const sep = rest.indexOf(":");
+  if (sep <= 0 || sep === rest.length - 1) return null;
+  return { tabId: rest.slice(0, sep), itemId: rest.slice(sep + 1) };
+}
+
 /** A tab plus its document body — returned when opening a single tab. */
 export interface ChannelTabWithContent extends ChannelTab {
   content: CanvasContent | null;

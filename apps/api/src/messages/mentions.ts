@@ -32,6 +32,10 @@ export function parseMentions(content: string): ParsedMention[] {
     } else if (token.startsWith("group:")) {
       // `<@group:marketing>` — a user group's handle, resolved to its roster.
       mentions.push({ userId: token.slice("group:".length), type: "group" });
+    } else if (token.startsWith("file:")) {
+      // `<@file:<tabId>:<itemId>>` — a folder-file reference, not a person. It
+      // resolves to a download link on click, so there is nobody to notify.
+      continue;
     } else {
       mentions.push({ userId: token, type: "user" });
     }

@@ -44,8 +44,8 @@ export type {
   ChannelTabWithContent,
   CanvasContent,
 } from "./types/tab";
-export { CHANNEL_TAB_TYPES } from "./types/tab";
-export type { FolderItem, FolderContent, SavedFolderItem } from "./types/tab";
+export { CHANNEL_TAB_TYPES, FILE_MENTION_PREFIX, formatFileMentionId, parseFileMentionId } from "./types/tab";
+export type { FolderItem, FolderContent, SavedFolderItem, FolderRef } from "./types/tab";
 export type {
   UserGroup,
   UserGroupDetail,

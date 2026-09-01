@@ -4,6 +4,20 @@ import { MessageContent } from "./MessageContent";
 import type { Mention, UserId, CustomEmoji } from "@openslaq/shared";
 import { asEmojiId, asWorkspaceId, asUserId } from "@openslaq/shared";
 
+// The chip's own behaviour is covered in FileMentionChip.test.tsx; here we only
+// check that MessageContent routes the token to it with the channel context.
+vi.mock("./FileMentionChip", () => ({
+  FileMentionChip: (p: { tabId: string; itemId: string; workspaceSlug?: string; channelId?: string }) => (
+    <span
+      data-testid="file-mention-stub"
+      data-tab={p.tabId}
+      data-item={p.itemId}
+      data-ws={p.workspaceSlug ?? ""}
+      data-ch={p.channelId ?? ""}
+    />
+  ),
+}));
+
 function mention(userId: string, displayName: string): Mention {
   return { userId: userId as UserId, displayName, type: "user" };
 }
@@ -196,6 +210,30 @@ describe("MessageContent", () => {
     expect(paragraphs[0]!.textContent).toContain("@here");
     expect(paragraphs[0]!.textContent).toContain("Hey");
     expect(paragraphs[0]!.textContent).toContain("please review");
+  });
+
+  test("routes a <@file:tab:item> token to a file chip with channel context", () => {
+    const { getByTestId } = render(
+      <MessageContent
+        content="grab <@file:tab-7:att-9> before the call"
+        workspaceSlug="acme"
+        channelId="chan-2"
+      />,
+    );
+    const stub = getByTestId("file-mention-stub");
+    expect(stub.getAttribute("data-tab")).toBe("tab-7");
+    expect(stub.getAttribute("data-item")).toBe("att-9");
+    expect(stub.getAttribute("data-ws")).toBe("acme");
+    expect(stub.getAttribute("data-ch")).toBe("chan-2");
+  });
+
+  test("a file token is never rendered as a user mention", () => {
+    const { container, queryByTestId } = render(
+      <MessageContent content="<@file:t:i>" mentions={[]} />,
+    );
+    expect(queryByTestId("file-mention-stub")).toBeTruthy();
+    expect(container.textContent).not.toContain("@file");
+    expect(container.querySelector("button")).toBeFalsy();
   });
 
   test("renders custom emoji alongside mentions", () => {

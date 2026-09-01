@@ -9,9 +9,26 @@ export type { MentionSuggestionItem };
 export function createMentionSuggestion(
   getMembers: () => MentionSuggestionItem[],
   isActiveRef?: { current: boolean },
+  getFiles?: () => MentionSuggestionItem[],
 ): Omit<SuggestionOptions<MentionSuggestionItem>, "editor"> {
   return {
-    items: ({ query }) => filterMentionItems(query, getMembers()),
+    items: ({ query }) => filterMentionItems(query, getMembers(), getFiles?.() ?? []),
+
+    // Same as the extension default, but carries the display name into `label`
+    // so the chip in the composer reads "@Ada Lovelace" / "@report.pdf" rather
+    // than the raw id. The stored markdown still comes from `id` via renderText.
+    command: ({ editor, range, props }) => {
+      const nodeAfter = editor.view.state.selection.$to.nodeAfter;
+      if (nodeAfter?.text?.startsWith(" ")) range.to += 1;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(range, [
+          { type: "mention", attrs: { id: props.id, label: props.displayName } },
+          { type: "text", text: " " },
+        ])
+        .run();
+    },
 
     render: () => {
       let container: HTMLDivElement | null = null;

@@ -5,7 +5,11 @@ export const GROUP_MENTIONS: MentionSuggestionItem[] = [
   { id: "channel", displayName: "@channel — notify all members", isGroup: true },
 ];
 
-export function filterMentionItems(query: string, members: MentionSuggestionItem[]): MentionSuggestionItem[] {
+export function filterMentionItems(
+  query: string,
+  members: MentionSuggestionItem[],
+  files: MentionSuggestionItem[] = [],
+): MentionSuggestionItem[] {
   const q = query.toLowerCase();
 
   const groups = GROUP_MENTIONS.filter((g) =>
@@ -14,5 +18,9 @@ export function filterMentionItems(query: string, members: MentionSuggestionItem
 
   const users = members.filter((m) => m.displayName.toLowerCase().includes(q));
 
-  return [...groups, ...users].slice(0, 10);
+  // Files sit below people (so an @name still lands on a person first) and get
+  // their own budget, so a crowded people list never hides every file.
+  const fileMatches = files.filter((f) => f.displayName.toLowerCase().includes(q));
+
+  return [...[...groups, ...users].slice(0, 10), ...fileMatches.slice(0, 8)];
 }

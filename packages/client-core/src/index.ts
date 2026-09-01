@@ -155,6 +155,7 @@ export {
   saveFolderItemOp,
   unsaveFolderItemOp,
   fetchSavedFolderItems,
+  fetchFolderRef,
   addBookmarkOp,
   removeBookmarkOp,
   registerPushToken,

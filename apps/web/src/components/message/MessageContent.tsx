@@ -5,14 +5,19 @@ import rehypeShiki from "@shikijs/rehype";
 import type { Components } from "react-markdown";
 import type { Node } from "unist";
 import type { Mention, CustomEmoji } from "@openslaq/shared";
+import { parseFileMentionId } from "@openslaq/shared";
 import { findCustomEmoji } from "@openslaq/client-core";
 import { CodeBlock } from "./CodeBlock";
+import { FileMentionChip } from "./FileMentionChip";
 
 interface MessageContentProps {
   content: string;
   mentions?: Mention[];
   onOpenProfile?: (userId: string) => void;
   customEmojis?: CustomEmoji[];
+  /** Channel this message lives in — lets @-mentioned files resolve a download. */
+  workspaceSlug?: string;
+  channelId?: string;
 }
 
 const sharedComponents: Components = {
@@ -111,11 +116,27 @@ function MentionBadge({
   token,
   mentions,
   onOpenProfile,
+  workspaceSlug,
+  channelId,
 }: {
   token: string;
   mentions: Mention[];
   onOpenProfile?: (userId: string) => void;
+  workspaceSlug?: string;
+  channelId?: string;
 }) {
+  const file = parseFileMentionId(token);
+  if (file) {
+    return (
+      <FileMentionChip
+        tabId={file.tabId}
+        itemId={file.itemId}
+        workspaceSlug={workspaceSlug}
+        channelId={channelId}
+      />
+    );
+  }
+
   if (token === "here") {
     return (
       <span className="inline bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1 rounded font-medium text-[13px]">
@@ -153,18 +174,33 @@ function CustomEmojiInline({ name, customEmojis }: { name: string; customEmojis?
   return <span>:{name}:</span>;
 }
 
-export function MessageContent({ content, mentions = [], onOpenProfile, customEmojis }: MessageContentProps) {
+export function MessageContent({
+  content,
+  mentions = [],
+  onOpenProfile,
+  customEmojis,
+  workspaceSlug,
+  channelId,
+}: MessageContentProps) {
   const hasCodeBlock = content.includes("```");
 
   const components = useMemo(() => ({
     ...sharedComponents,
     "mention-badge": (props: { token?: string }) => {
-      return props.token ? <MentionBadge token={props.token} mentions={mentions} onOpenProfile={onOpenProfile} /> : null;
+      return props.token ? (
+        <MentionBadge
+          token={props.token}
+          mentions={mentions}
+          onOpenProfile={onOpenProfile}
+          workspaceSlug={workspaceSlug}
+          channelId={channelId}
+        />
+      ) : null;
     },
     "custom-emoji-inline": (props: { name?: string }) => {
       return props.name ? <CustomEmojiInline name={props.name} customEmojis={customEmojis} /> : null;
     },
-  } as Components), [mentions, onOpenProfile, customEmojis]);
+  } as Components), [mentions, onOpenProfile, customEmojis, workspaceSlug, channelId]);
 
   return (
     <div className="text-sm leading-normal mt-0.5">

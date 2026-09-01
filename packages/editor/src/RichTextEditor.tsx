@@ -42,6 +42,8 @@ interface RichTextEditorProps {
   onContentChange?: (markdown: string) => void;
   filePreview?: React.ReactNode;
   members?: MentionSuggestionItem[];
+  /** Folder entries from this channel, offered under people in the @ menu. */
+  files?: MentionSuggestionItem[];
   onScheduleSend?: () => void;
   customEmojis?: CustomEmojiItem[];
   slashCommands?: SlashCommandItem[];
@@ -323,6 +325,7 @@ export function RichTextEditor({
   onContentChange,
   filePreview,
   members = [],
+  files = [],
   onScheduleSend,
   customEmojis,
   slashCommands = [],
@@ -344,6 +347,9 @@ export function RichTextEditor({
   const membersRef = useRef(members);
   membersRef.current = members;
 
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
   const slashCommandsRef = useRef(slashCommands);
   slashCommandsRef.current = slashCommands;
 
@@ -352,7 +358,12 @@ export function RichTextEditor({
 
   const mentionSuggestionActiveRef = useRef(false);
   const mentionSuggestion = useMemo(
-    () => createMentionSuggestion(() => membersRef.current, mentionSuggestionActiveRef),
+    () =>
+      createMentionSuggestion(
+        () => membersRef.current,
+        mentionSuggestionActiveRef,
+        () => filesRef.current,
+      ),
     [],
   );
 
