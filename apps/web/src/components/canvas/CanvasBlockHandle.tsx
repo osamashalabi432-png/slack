@@ -70,15 +70,17 @@ export function CanvasBlockHandle({ editor }: { editor: Editor }) {
   };
 
   return (
+    // Top-level blocks only (no `nested`): the handle then always aligns to the
+    // document's left edge and sits in the gutter, instead of landing on a list
+    // bullet or an ordered-list number.
     <DragHandle
       editor={editor}
-      nested
       onNodeChange={({ node, pos }) => {
         targetRef.current = node ? { node, pos } : null;
         if (!node) setMenuOpen(false);
       }}
     >
-      <div className="flex items-center gap-0.5 pr-1" data-testid="canvas-block-handle">
+      <div className="flex items-center gap-0.5 pr-1.5" data-testid="canvas-block-handle">
         <button
           type="button"
           aria-label="Add block below"

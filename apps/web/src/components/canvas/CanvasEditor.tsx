@@ -7,33 +7,17 @@ import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TaskList, TaskItem } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { CodeBlockShiki } from "tiptap-extension-code-block-shiki";
 import type { CanvasContent, DatabasePreset } from "@openslaq/shared";
-import clsx from "clsx";
-import {
-  Bold,
-  Italic,
-  Strikethrough,
-  Underline as UnderlineIcon,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  ListTodo,
-  Quote,
-  Code,
-  Minus,
-  Undo2,
-  Redo2,
-  Table2,
-  BetweenVerticalEnd,
-  BetweenHorizontalEnd,
-  Columns3,
-  Rows3,
-  Trash2,
-} from "lucide-react";
+import { useCanvasCollab } from "../../hooks/chat/useCanvasCollab";
+import { renderCollabCaret } from "./collab-caret";
 import { CanvasBlockHandle } from "./CanvasBlockHandle";
+import { CanvasTableControls } from "./CanvasTableControls";
+import { CanvasBottomToolbar } from "./CanvasBottomToolbar";
+import { CanvasBubbleMenu } from "./CanvasBubbleMenu";
+import { CanvasColumns, CanvasColumn } from "./canvas-columns";
 import { CanvasSlashMenu } from "./canvas-slash-menu";
 import { CanvasDatabaseNode } from "./CanvasDatabaseNode";
 import { PageLinkNode } from "./PageLinkNode";
@@ -44,177 +28,6 @@ import "./canvas.css";
 export type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 const AUTOSAVE_DELAY_MS = 900;
-
-interface ToolButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}
-
-function ToolButton({ icon, label, active, disabled, onClick }: ToolButtonProps) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      disabled={disabled}
-      // Keep the selection while clicking the toolbar.
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-      className={clsx(
-        "w-7 h-7 flex items-center justify-center rounded border-none cursor-pointer transition-colors bg-transparent",
-        disabled && "opacity-40 cursor-not-allowed",
-        active ? "bg-surface-selected text-slaq-blue" : "text-secondary hover:bg-surface-hover",
-      )}
-    >
-      {icon}
-    </button>
-  );
-}
-
-function Divider() {
-  return <span className="w-px h-5 bg-border-default mx-1" />;
-}
-
-function CanvasToolbar({ editor }: { editor: Editor }) {
-  return (
-    <div className="flex items-center gap-0.5 flex-wrap px-4 py-1.5 border-b border-border-default bg-surface sticky top-0 z-10">
-      <ToolButton
-        icon={<Bold className="w-4 h-4" />}
-        label="Bold"
-        active={editor.isActive("bold")}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-      />
-      <ToolButton
-        icon={<Italic className="w-4 h-4" />}
-        label="Italic"
-        active={editor.isActive("italic")}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-      />
-      <ToolButton
-        icon={<UnderlineIcon className="w-4 h-4" />}
-        label="Underline"
-        active={editor.isActive("underline")}
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-      />
-      <ToolButton
-        icon={<Strikethrough className="w-4 h-4" />}
-        label="Strikethrough"
-        active={editor.isActive("strike")}
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-      />
-      <Divider />
-      <ToolButton
-        icon={<Heading1 className="w-4 h-4" />}
-        label="Heading 1"
-        active={editor.isActive("heading", { level: 1 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-      />
-      <ToolButton
-        icon={<Heading2 className="w-4 h-4" />}
-        label="Heading 2"
-        active={editor.isActive("heading", { level: 2 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-      />
-      <ToolButton
-        icon={<Heading3 className="w-4 h-4" />}
-        label="Heading 3"
-        active={editor.isActive("heading", { level: 3 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-      />
-      <Divider />
-      <ToolButton
-        icon={<ListTodo className="w-4 h-4" />}
-        label="To-do list"
-        active={editor.isActive("taskList")}
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
-      />
-      <ToolButton
-        icon={<List className="w-4 h-4" />}
-        label="Bulleted list"
-        active={editor.isActive("bulletList")}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-      />
-      <ToolButton
-        icon={<ListOrdered className="w-4 h-4" />}
-        label="Numbered list"
-        active={editor.isActive("orderedList")}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      />
-      <Divider />
-      <ToolButton
-        icon={<Quote className="w-4 h-4" />}
-        label="Quote"
-        active={editor.isActive("blockquote")}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-      />
-      <ToolButton
-        icon={<Code className="w-4 h-4" />}
-        label="Code block"
-        active={editor.isActive("codeBlock")}
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-      />
-      <ToolButton
-        icon={<Minus className="w-4 h-4" />}
-        label="Divider"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-      />
-      <ToolButton
-        icon={<Table2 className="w-4 h-4" />}
-        label="Insert table"
-        active={editor.isActive("table")}
-        onClick={() =>
-          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-        }
-      />
-      {editor.isActive("table") && (
-        <>
-          <Divider />
-          <ToolButton
-            icon={<BetweenVerticalEnd className="w-4 h-4" />}
-            label="Add column"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-          />
-          <ToolButton
-            icon={<Columns3 className="w-4 h-4" />}
-            label="Delete column"
-            onClick={() => editor.chain().focus().deleteColumn().run()}
-          />
-          <ToolButton
-            icon={<BetweenHorizontalEnd className="w-4 h-4" />}
-            label="Add row"
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-          />
-          <ToolButton
-            icon={<Rows3 className="w-4 h-4" />}
-            label="Delete row"
-            onClick={() => editor.chain().focus().deleteRow().run()}
-          />
-          <ToolButton
-            icon={<Trash2 className="w-4 h-4" />}
-            label="Delete table"
-            onClick={() => editor.chain().focus().deleteTable().run()}
-          />
-        </>
-      )}
-      <Divider />
-      <ToolButton
-        icon={<Undo2 className="w-4 h-4" />}
-        label="Undo"
-        disabled={!editor.can().undo()}
-        onClick={() => editor.chain().focus().undo().run()}
-      />
-      <ToolButton
-        icon={<Redo2 className="w-4 h-4" />}
-        label="Redo"
-        disabled={!editor.can().redo()}
-        onClick={() => editor.chain().focus().redo().run()}
-      />
-    </div>
-  );
-}
 
 /** Image files from a paste or a drop, ignoring anything else carried along. */
 export function imageFilesFrom(data: DataTransfer | null): File[] {
@@ -237,6 +50,11 @@ interface CanvasEditorProps {
   onCreatePage?: () => Promise<string | null>;
   /** Stores an image and says where it went, or null if it could not be kept. */
   onUploadImage?: (file: File) => Promise<UploadedImage | null>;
+  /**
+   * The signed-in user, for real-time co-editing. When present the canvas joins
+   * a collaboration room and shows everyone's cursor + a gutter avatar.
+   */
+  collabUser?: { id: string; name: string; color: string; avatarUrl?: string | null } | null;
 }
 
 /**
@@ -252,7 +70,9 @@ export function CanvasEditor({
   onCreateDatabase,
   onCreatePage,
   onUploadImage,
+  collabUser = null,
 }: CanvasEditorProps) {
+  const collabEnabled = Boolean(collabUser) && editable;
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<CanvasContent | null>(null);
@@ -308,6 +128,25 @@ export function CanvasEditor({
   const createDatabaseRef = useRef(onCreateDatabase);
   createDatabaseRef.current = onCreateDatabase;
   const editorRef = useRef<Editor | null>(null);
+  // The scrolling document viewport — the bottom toolbar is pinned to its
+  // bottom edge and centred on its width, so it never drifts as the caret moves.
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Seed the shared Yjs doc from the saved body — only the client the relay
+  // designates, and only while the doc is still empty, so it can't duplicate.
+  const seedCollabDoc = useCallback((content: CanvasContent | null) => {
+    const e = editorRef.current;
+    if (e && content && e.isEmpty) {
+      e.commands.setContent(content, { emitUpdate: true });
+    }
+  }, []);
+
+  const collab = useCanvasCollab({
+    enabled: collabEnabled,
+    pageId: documentKey,
+    initialContent,
+    onSeed: seedCollabDoc,
+  });
 
   const createPageRef = useRef(onCreatePage);
   createPageRef.current = onCreatePage;
@@ -413,10 +252,30 @@ export function CanvasEditor({
         codeBlock: false,
         link: false,
         heading: { levels: [1, 2, 3] },
+        // Collaboration ships its own shared-history; the built-in one would
+        // clash with it.
+        undoRedo: collabEnabled ? false : undefined,
       }),
+      ...(collabEnabled
+        ? [
+            Collaboration.configure({ document: collab.ydoc }),
+            CollaborationCaret.configure({
+              provider: { awareness: collab.awareness },
+              user: collabUser ?? {},
+              render: renderCollabCaret,
+            }),
+          ]
+        : []),
       CodeBlockShiki.configure({ defaultTheme: "github-dark" }),
       TableKit.configure({
-        table: { resizable: true, HTMLAttributes: { class: "canvas-table" } },
+        table: {
+          resizable: true,
+          cellMinWidth: 48,
+          // Resizing the last column shouldn't grow the whole table past its
+          // container — keeps the layout (and the hover "+" affordance) stable.
+          lastColumnResizable: false,
+          HTMLAttributes: { class: "canvas-table" },
+        },
       }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
@@ -429,20 +288,34 @@ export function CanvasEditor({
       CanvasDatabaseNode,
       PageLinkNode,
       CanvasImageNode,
+      CanvasColumns,
+      CanvasColumn,
       CanvasSlashMenu.configure({
         onCreateDatabase: handleCreateDatabase,
         onCreatePage: onCreatePage ? handleCreatePage : null,
         onInsertImage: onUploadImage ? handlePickImage : null,
       }),
     ],
-    [handleCreateDatabase, handleCreatePage, onCreatePage, handlePickImage, onUploadImage],
+    [
+      handleCreateDatabase,
+      handleCreatePage,
+      onCreatePage,
+      handlePickImage,
+      onUploadImage,
+      collabEnabled,
+      collab.ydoc,
+      collab.awareness,
+      collabUser,
+    ],
   );
 
   const editor = useEditor(
     {
       extensions,
       editable,
-      content: initialContent ?? "",
+      // In collab mode the shared Yjs doc is the source of truth — the seeding
+      // client loads `initialContent` into it once (see seedCollabDoc).
+      content: collabEnabled ? undefined : (initialContent ?? ""),
       onCreate: ({ editor: e }) => {
         savedJsonRef.current = JSON.stringify(e.getJSON());
       },
@@ -470,8 +343,9 @@ export function CanvasEditor({
         },
       },
     },
-    // Rebuild when switching documents so content/history do not leak across tabs.
-    [documentKey],
+    // Rebuild when switching documents (so content/history don't leak across
+    // tabs) or when collaboration turns on/off.
+    [documentKey, collabEnabled],
   );
 
   useEffect(() => {
@@ -502,13 +376,23 @@ export function CanvasEditor({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col" data-save-state={saveState}>
-      {editable && <CanvasToolbar editor={editor} />}
-      <div className="flex-1 overflow-y-auto">
-        <div className="w-full px-8 py-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {/* Extra bottom room so the floating toolbar never covers the last line. */}
+        <div className="w-full px-8 pt-6 pb-28">
           {editable && <CanvasBlockHandle editor={editor} />}
+          {editable && <CanvasTableControls editor={editor} />}
+          {editable && <CanvasBubbleMenu editor={editor} />}
           <EditorContent editor={editor} />
         </div>
       </div>
+      {editable && (
+        <CanvasBottomToolbar
+          editor={editor}
+          containerRef={scrollRef}
+          onPickImage={onUploadImage ? handlePickImage : undefined}
+          onCreatePage={onCreatePage ? handleCreatePage : undefined}
+        />
+      )}
     </div>
   );
 }

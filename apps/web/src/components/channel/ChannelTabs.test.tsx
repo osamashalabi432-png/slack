@@ -26,6 +26,7 @@ const defaultProps = {
   onSelectTab: () => {},
   onCreateTab: () => {},
   onRenameTab: () => {},
+  onReorderTabs: () => {},
   onDeleteTab: () => {},
   canManage: true,
 };
@@ -135,5 +136,24 @@ describe("ChannelTabs", () => {
     renderTabs({ tabs: [makeTab("t-1", "Canvas", 0)] });
     expect(screen.queryByTestId("channel-tab-files")).toBeNull();
     expect(screen.getByTestId("channel-tabs").textContent).not.toContain("Files");
+  });
+
+  test("dragging a tab onto another commits the new order", () => {
+    const onReorderTabs = vi.fn();
+    renderTabs({
+      tabs: [makeTab("t-1", "A", 0), makeTab("t-2", "B", 1), makeTab("t-3", "C", 2)],
+      onReorderTabs,
+    });
+    const dt = { setData: vi.fn(), getData: vi.fn(() => "t-3"), effectAllowed: "", dropEffect: "" };
+    fireEvent.dragStart(screen.getByTestId("channel-tab-drag-t-3"), { dataTransfer: dt });
+    fireEvent.dragOver(screen.getByTestId("channel-tab-drag-t-1"), { dataTransfer: dt });
+    fireEvent.drop(screen.getByTestId("channel-tab-drag-t-1"), { dataTransfer: dt });
+
+    expect(onReorderTabs).toHaveBeenCalledWith(["t-3", "t-1", "t-2"]);
+  });
+
+  test("tabs are not draggable when the channel can't be managed", () => {
+    renderTabs({ tabs: [makeTab("t-1", "A", 0)], canManage: false });
+    expect(screen.getByTestId("channel-tab-drag-t-1").getAttribute("draggable")).toBe("false");
   });
 });

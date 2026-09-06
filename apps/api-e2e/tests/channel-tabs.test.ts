@@ -84,6 +84,76 @@ describe("channel tabs", () => {
     expect(data.tabs.map((t) => t.name)).toEqual(["Project plan", "Retro notes"]);
   });
 
+  test("reorders tabs and rejects a bad id list", async () => {
+    const chRes = await client.api.workspaces[":slug"].channels.$post({
+      param: { slug },
+      json: { name: `tab-reorder-${testId()}` },
+    });
+    const ch = ((await chRes.json()) as { id: string }).id;
+
+    const made: TabResponse[] = [];
+    for (const name of ["Alpha", "Bravo", "Charlie"]) {
+      const r = await client.api.workspaces[":slug"].channels[":id"].tabs.$post({
+        param: { slug, id: ch },
+        json: { type: "canvas", name },
+      });
+      made.push((await r.json()) as TabResponse);
+    }
+    const [a, b, c] = made;
+
+    // Charlie, Alpha, Bravo
+    const reordered = await client.api.workspaces[":slug"].channels[":id"].tabs.reorder.$put({
+      param: { slug, id: ch },
+      json: { orderedIds: [c!.id, a!.id, b!.id] },
+    });
+    expect(reordered.status).toBe(200);
+    const body = (await reordered.json()) as { tabs: TabResponse[] };
+    expect(body.tabs.map((t) => t.name)).toEqual(["Charlie", "Alpha", "Bravo"]);
+    expect(body.tabs.map((t) => t.position)).toEqual([0, 1, 2]);
+
+    // Persisted.
+    const listRes = await client.api.workspaces[":slug"].channels[":id"].tabs.$get({
+      param: { slug, id: ch },
+    });
+    const listed = (await listRes.json()) as { tabs: TabResponse[] };
+    expect(listed.tabs.map((t) => t.name)).toEqual(["Charlie", "Alpha", "Bravo"]);
+
+    // A partial / wrong list is refused, order unchanged.
+    const bad = await client.api.workspaces[":slug"].channels[":id"].tabs.reorder.$put({
+      param: { slug, id: ch },
+      json: { orderedIds: [a!.id, b!.id] },
+    });
+    expect(bad.status).toBe(400);
+  });
+
+  test("renaming a canvas tab's page renames the tab", async () => {
+    const createRes = await client.api.workspaces[":slug"].channels[":id"].tabs.$post({
+      param: { slug, id: channelId },
+      json: { type: "canvas", name: "Draft plan" },
+    });
+    const tab = (await createRes.json()) as TabResponse;
+
+    // Open (create) the page behind the tab.
+    const pageRes = await client.api.workspaces[":slug"].channels[":id"].tabs[":tabId"].page.$post({
+      param: { slug, id: channelId, tabId: tab.id },
+    });
+    const { pageId } = (await pageRes.json()) as { pageId: string };
+
+    // Rename the document.
+    const patchRes = await client.api.workspaces[":slug"].pages[":pageId"].$patch({
+      param: { slug, pageId },
+      json: { title: "Q3 Rollout Plan" },
+    });
+    expect(patchRes.status).toBe(200);
+
+    // The tab strip follows.
+    const listRes = await client.api.workspaces[":slug"].channels[":id"].tabs.$get({
+      param: { slug, id: channelId },
+    });
+    const data = (await listRes.json()) as { tabs: TabResponse[] };
+    expect(data.tabs.find((t) => t.id === tab.id)?.name).toBe("Q3 Rollout Plan");
+  });
+
   test("a new canvas starts with no content", async () => {
     const createRes = await client.api.workspaces[":slug"].channels[":id"].tabs.$post({
       param: { slug, id: channelId },

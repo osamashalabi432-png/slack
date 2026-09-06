@@ -5,8 +5,11 @@ import { fireEvent } from "@testing-library/react";
 import {
   CANVAS_BLOCKS,
   filterCanvasBlocks,
+  pageBlockItem,
   CanvasSlashList,
 } from "./canvas-slash-menu";
+
+const noop = () => {};
 
 describe("filterCanvasBlocks", () => {
   test("returns every block for an empty query", () => {
@@ -34,6 +37,27 @@ describe("filterCanvasBlocks", () => {
   test("every block has a distinct id", () => {
     const ids = CANVAS_BLOCKS.map((b) => b.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("ranks a title match above a keyword/description match", () => {
+    // "/pa": Text matches only via its "paragraph" keyword; Page matches its
+    // title. Page must come first.
+    const ids = filterCanvasBlocks("pa", [pageBlockItem(noop)]).map((b) => b.id);
+    expect(ids[0]).toBe("page");
+    expect(ids).toContain("text");
+    expect(ids.indexOf("page")).toBeLessThan(ids.indexOf("text"));
+  });
+
+  test("prefers a title prefix over a title substring", () => {
+    // "code" is the title of the code block; nothing else starts with it.
+    expect(filterCanvasBlocks("code")[0]?.id).toBe("code");
+  });
+
+  test("keeps the original menu order within the same rank", () => {
+    // Both headings match "heading" by keyword-prefix at the same rank.
+    const ids = filterCanvasBlocks("heading").map((b) => b.id);
+    expect(ids.indexOf("h1")).toBeLessThan(ids.indexOf("h2"));
+    expect(ids.indexOf("h2")).toBeLessThan(ids.indexOf("h3"));
   });
 });
 

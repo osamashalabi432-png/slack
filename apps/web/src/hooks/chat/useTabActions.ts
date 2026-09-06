@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import type { CanvasContent, ChannelTabType } from "@openslaq/shared";
-import { fetchTabs, createTabOp, renameTabOp, deleteTabOp, saveCanvasOp } from "@openslaq/client-core";
+import { fetchTabs, createTabOp, renameTabOp, reorderTabsOp, deleteTabOp, saveCanvasOp } from "@openslaq/client-core";
 import { useChatStore } from "../../state/chat-store";
 import { useOperationDeps } from "./useOperationDeps";
 import { useGalleryMode } from "../../gallery/gallery-context";
@@ -58,6 +58,14 @@ export function useTabActions(workspaceSlug: string | undefined, channelId: stri
     [deps, workspaceSlug, channelId],
   );
 
+  const reorderTabs = useCallback(
+    async (orderedIds: string[]) => {
+      if (!workspaceSlug || !channelId) return;
+      await reorderTabsOp(deps, { workspaceSlug, channelId, orderedIds });
+    },
+    [deps, workspaceSlug, channelId],
+  );
+
   const saveCanvas = useCallback(
     async (tabId: string, content: CanvasContent) => {
       if (!workspaceSlug || !channelId) return null;
@@ -66,5 +74,5 @@ export function useTabActions(workspaceSlug: string | undefined, channelId: stri
     [deps, workspaceSlug, channelId],
   );
 
-  return { tabs, activeTabId: state.activeTabId, selectTab, createTab, renameTab, deleteTab, saveCanvas };
+  return { tabs, activeTabId: state.activeTabId, selectTab, createTab, renameTab, reorderTabs, deleteTab, saveCanvas };
 }

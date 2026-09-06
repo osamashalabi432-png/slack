@@ -21,6 +21,11 @@ export interface ClientToServerEvents {
   "channel:leave": (payload: { channelId: ChannelId }) => void;
   "message:typing": (payload: { channelId: ChannelId }) => void;
   "presence:heartbeat": () => void;
+  /** Real-time canvas editing: `update` payloads are opaque Yjs bytes. */
+  "canvas:collab-join": (payload: { pageId: string }) => void;
+  "canvas:collab-leave": (payload: { pageId: string }) => void;
+  "canvas:collab-update": (payload: { pageId: string; update: Uint8Array }) => void;
+  "canvas:collab-awareness": (payload: { pageId: string; update: Uint8Array }) => void;
 }
 
 // Server → Client events
@@ -100,6 +105,14 @@ export interface ServerToClientEvents {
     updatedBy: UserId;
     updatedAt: string;
   }) => void;
+  /**
+   * Real-time canvas editing relay. `state` on sync is the merged Yjs update so
+   * far (null when the room is empty); `seed: true` tells the receiver to load
+   * the page's saved content into the shared doc.
+   */
+  "canvas:collab-sync": (payload: { pageId: string; state: Uint8Array | null; seed: boolean }) => void;
+  "canvas:collab-update": (payload: { pageId: string; update: Uint8Array }) => void;
+  "canvas:collab-awareness": (payload: { pageId: string; update: Uint8Array }) => void;
   "command:ephemeral": (payload: EphemeralMessage) => void;
   "user:profileUpdated": (payload: {
     userId: UserId;

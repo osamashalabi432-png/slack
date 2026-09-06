@@ -534,6 +534,7 @@ export function AppLayout() {
                     void tabActions.createTab(type, type === "folder" ? "Folder" : "Canvas")
                   }
                   onRenameTab={(tabId, name) => void tabActions.renameTab(tabId, name)}
+                  onReorderTabs={(orderedIds) => void tabActions.reorderTabs(orderedIds)}
                   onDeleteTab={(tabId) => void tabActions.deleteTab(tabId)}
                   canManage={!activeChannel.isArchived}
                 />

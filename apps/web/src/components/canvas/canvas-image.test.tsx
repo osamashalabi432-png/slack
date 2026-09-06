@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from "vitest";
 import { imageFilesFrom } from "./CanvasEditor";
 import { imageBlockItem } from "./canvas-slash-menu";
+import { clampImageWidth, MIN_IMAGE_WIDTH } from "./CanvasImageNode";
 import type { Editor, Range } from "@tiptap/core";
 
 /** A DataTransfer stand-in: jsdom's constructor cannot carry files. */
@@ -43,5 +44,25 @@ describe("imageBlockItem", () => {
     const item = imageBlockItem(() => {});
     expect(item.keywords).toContain("image");
     expect(item.keywords).toContain("screenshot");
+  });
+});
+
+describe("clampImageWidth", () => {
+  test("scales freely between the floor and the container width", () => {
+    expect(clampImageWidth(400, 800)).toBe(400);
+    expect(clampImageWidth(733.4, 800)).toBe(733);
+  });
+
+  test("never smaller than the minimum", () => {
+    expect(clampImageWidth(10, 800)).toBe(MIN_IMAGE_WIDTH);
+    expect(clampImageWidth(-50, 800)).toBe(MIN_IMAGE_WIDTH);
+  });
+
+  test("never wider than the container", () => {
+    expect(clampImageWidth(5000, 640)).toBe(640);
+  });
+
+  test("copes with a zero / unknown container", () => {
+    expect(clampImageWidth(300, 0)).toBe(MIN_IMAGE_WIDTH);
   });
 });

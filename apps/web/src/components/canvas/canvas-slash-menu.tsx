@@ -129,14 +129,31 @@ export const CANVAS_BLOCKS: CanvasBlockItem[] = [
   },
 ];
 
+/**
+ * Match score, lower = better. A hit on the block's own name always beats a hit
+ * on its keywords/description, so `/pa` lands on **Page** before **Text** (whose
+ * "paragraph" keyword also matches).
+ */
+function matchRank(block: CanvasBlockItem, q: string): number {
+  const title = block.title.toLowerCase();
+  if (title.startsWith(q)) return 0;
+  if (title.includes(q)) return 1;
+  if (block.keywords.some((k) => k.toLowerCase().startsWith(q))) return 2;
+  if (block.keywords.some((k) => k.toLowerCase().includes(q))) return 3;
+  return Infinity;
+}
+
 export function filterCanvasBlocks(query: string, extra: CanvasBlockItem[] = []): CanvasBlockItem[] {
   const all = [...CANVAS_BLOCKS, ...extra];
   const q = query.trim().toLowerCase();
   if (!q) return all;
-  return all.filter(
-    (block) =>
-      block.title.toLowerCase().includes(q) || block.keywords.some((k) => k.startsWith(q)),
-  );
+
+  return all
+    .map((block, index) => ({ block, index, rank: matchRank(block, q) }))
+    .filter((entry) => entry.rank !== Infinity)
+    // Stable: fall back to the original menu order within a rank.
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.block);
 }
 
 /**

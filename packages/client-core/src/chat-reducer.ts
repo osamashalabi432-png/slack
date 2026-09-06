@@ -1388,7 +1388,11 @@ export function chatReducer(state: ChatStoreState, action: ChatAction): ChatStor
         ...state,
         channelTabs: {
           ...state.channelTabs,
-          [action.tab.channelId]: existing.map((t) => (t.id === action.tab.id ? action.tab : t)),
+          // Keep the strip ordered by position so a remote reorder (which
+          // arrives as one tab:updated per tab) actually re-sorts here.
+          [action.tab.channelId]: existing
+            .map((t) => (t.id === action.tab.id ? action.tab : t))
+            .sort((a, b) => a.position - b.position),
         },
       };
     }

@@ -143,6 +143,7 @@ export {
   fetchCanvasContent,
   createTabOp,
   renameTabOp,
+  reorderTabsOp,
   saveCanvasOp,
   deleteTabOp,
   createDatabaseOp,

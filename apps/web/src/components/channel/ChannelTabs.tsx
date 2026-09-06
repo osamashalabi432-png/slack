@@ -18,6 +18,8 @@ interface ChannelTabsProps {
   onSelectTab: (tabId: string | null) => void;
   onCreateTab: (type: ChannelTabType) => void;
   onRenameTab: (tabId: string, name: string) => void;
+  /** Commit a new left-to-right order for the custom tabs. */
+  onReorderTabs: (orderedIds: string[]) => void;
   onDeleteTab: (tabId: string) => void;
   canManage: boolean;
 }
@@ -36,13 +38,36 @@ export function ChannelTabs({
   onSelectTab,
   onCreateTab,
   onRenameTab,
+  onReorderTabs,
   onDeleteTab,
   canManage,
 }: ChannelTabsProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { confirm, dialog } = useConfirm();
+
+  const endDrag = useCallback(() => {
+    setDragId(null);
+    setOverId(null);
+  }, []);
+
+  const commitReorder = useCallback(
+    (from: string, to: string) => {
+      endDrag();
+      if (from === to) return;
+      const ids: string[] = tabs.map((t) => t.id);
+      const fromIndex = ids.indexOf(from);
+      const toIndex = ids.indexOf(to);
+      if (fromIndex < 0 || toIndex < 0) return;
+      ids.splice(fromIndex, 1);
+      ids.splice(toIndex, 0, from);
+      onReorderTabs(ids);
+    },
+    [tabs, onReorderTabs, endDrag],
+  );
 
   useEffect(() => {
     if (renamingId) inputRef.current?.select();
@@ -115,7 +140,35 @@ export function ChannelTabs({
         }
 
         return (
-          <div key={tab.id} className="flex items-center">
+          <div
+            key={tab.id}
+            data-testid={`channel-tab-drag-${tab.id}`}
+            draggable={canManage && renamingId !== tab.id}
+            onDragStart={(e) => {
+              setDragId(tab.id);
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", tab.id);
+            }}
+            onDragOver={(e) => {
+              if (!dragId || dragId === tab.id) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setOverId(tab.id);
+            }}
+            onDragLeave={() => setOverId((id) => (id === tab.id ? null : id))}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = dragId ?? e.dataTransfer.getData("text/plain");
+              if (from) commitReorder(from, tab.id);
+            }}
+            onDragEnd={endDrag}
+            className={clsx(
+              "flex items-center rounded transition-opacity",
+              dragId === tab.id && "opacity-40",
+              overId === tab.id && dragId !== null && dragId !== tab.id && "bg-surface-hover",
+              canManage && renamingId !== tab.id && "cursor-grab active:cursor-grabbing",
+            )}
+          >
             <button
               type="button"
               data-testid={`channel-tab-${tab.id}`}

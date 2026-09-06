@@ -116,6 +116,7 @@ export {
   fetchCanvasContent,
   createTabOp,
   renameTabOp,
+  reorderTabsOp,
   saveCanvasOp,
   deleteTabOp,
 } from "./tabs";
