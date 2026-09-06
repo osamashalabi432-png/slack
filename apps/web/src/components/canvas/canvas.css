@@ -6,6 +6,61 @@
   font-size: 16px;
   line-height: 1.7;
   caret-color: var(--text-primary);
+  /* Containing block for the collaborators' gutter avatars. */
+  position: relative;
+}
+
+/* ── Live collaboration carets ─────────────────────────────────────── */
+
+.collab-caret {
+  position: static;
+  margin-left: -1px;
+  border-left: 2px solid var(--collab-color, var(--color-slaq-blue, #1264a3));
+  pointer-events: none;
+  word-break: normal;
+  box-sizing: border-box;
+}
+
+/* Round avatar pinned in the left gutter, on the line the person is editing. */
+.collab-caret__avatar {
+  position: absolute;
+  left: -1.9rem;
+  margin-top: -0.15em;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 9999px;
+  background-color: var(--collab-color, var(--color-slaq-blue, #1264a3));
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.collab-caret__label {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 0;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--collab-color, var(--color-slaq-blue, #1264a3));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.collab-caret__avatar:hover .collab-caret__label {
+  opacity: 1;
 }
 
 /*
@@ -133,11 +188,49 @@
   min-width: 0;
 }
 
+/*
+ * Hollow, rounded checkbox (Notion-style) rather than the browser's solid
+ * default — which rendered as an opaque white block on the dark canvas.
+ */
 .canvas-doc ul[data-type="taskList"] li input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: transparent;
   cursor: pointer;
-  accent-color: var(--color-slaq-blue, #1264a3);
+  display: inline-grid;
+  place-content: center;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.canvas-doc ul[data-type="taskList"] li input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: transform 0.12s ease;
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.canvas-doc ul[data-type="taskList"] li input[type="checkbox"]:hover {
+  border-color: var(--color-slaq-blue, #1264a3);
+}
+
+.canvas-doc ul[data-type="taskList"] li input[type="checkbox"]:checked {
+  background: var(--color-slaq-blue, #1264a3);
+  border-color: var(--color-slaq-blue, #1264a3);
+}
+
+.canvas-doc ul[data-type="taskList"] li input[type="checkbox"]:checked::before {
+  transform: scale(1);
 }
 
 .canvas-doc ul[data-type="taskList"] li[data-checked="true"] > div {
@@ -157,6 +250,23 @@
   pointer-events: none;
 }
 
+/* "Layouts" — side-by-side columns */
+.canvas-doc .canvas-columns {
+  display: flex;
+  gap: 1.25rem;
+  margin: 0.75em 0;
+  align-items: flex-start;
+}
+
+.canvas-doc .canvas-columns > [data-canvas-column] {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.canvas-doc .canvas-columns > [data-canvas-column] > * + * {
+  margin-top: 0.4em;
+}
+
 .canvas-database-node {
   margin: 0.75em 0;
 }
@@ -173,7 +283,12 @@
  */
 .canvas-doc .tableWrapper {
   margin: 0.75em 0;
+  /* Only the horizontal axis may scroll (wide tables). Pinning overflow-y stops
+     the browser promoting it to `auto` and painting a stray vertical bar. */
   overflow-x: auto;
+  overflow-y: hidden;
+  /* Room on the right/bottom for the hover "+" affordances. */
+  padding: 0 14px 14px 0;
 }
 
 .canvas-doc table {
@@ -181,12 +296,16 @@
   table-layout: fixed;
   width: 100%;
   margin: 0;
+  /* Clip the resize handle's overhang so hovering a border can't nudge layout. */
+  overflow: hidden;
 }
 
 .canvas-doc table td,
 .canvas-doc table th {
   position: relative;
-  min-width: 6em;
+  /* Small floor: a large min-width fights the column-resizing plugin's computed
+     widths, which is what made columns jump on first hover. */
+  min-width: 2em;
   border: 1px solid var(--border-strong);
   padding: 0.4em 0.6em;
   vertical-align: top;
@@ -203,27 +322,102 @@
   margin: 0;
 }
 
-/* Cells caught in a multi-cell selection. */
-.canvas-doc table .selectedCell::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--surface-selected);
-  opacity: 0.5;
-  pointer-events: none;
+/*
+ * Cells caught in a selection (row / column grip click, drag-select): a crisp
+ * blue outline, no translucent fill.
+ */
+.canvas-doc table .selectedCell {
+  border-color: var(--color-slaq-blue, #1264a3);
+  box-shadow: inset 0 0 0 1px var(--color-slaq-blue, #1264a3);
 }
 
 /* Blue bar shown while dragging a column border. */
 .canvas-doc table .column-resize-handle {
   position: absolute;
   top: 0;
-  right: -2px;
-  bottom: -2px;
-  width: 3px;
+  right: -1px;
+  bottom: -1px;
+  width: 2px;
   background: var(--color-slaq-blue, #1264a3);
   pointer-events: none;
 }
 
-.canvas-doc .tableWrapper.resize-cursor {
+/*
+ * Row / column grips. The <button> itself is a generous transparent hit area
+ * on the table's border; it paints only a small gray "nub" (::before), centred
+ * on the row / column, that you grab to select the whole line. The nub shows
+ * while the pointer is over the table (data-active) and turns blue on hover.
+ */
+.canvas-table-grip {
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.canvas-table-grip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: var(--border-strong);
+  opacity: 0;
+  transition:
+    opacity 0.12s ease,
+    background-color 0.1s ease;
+}
+
+.canvas-table-grip[data-axis="col"]::before {
+  width: 22px;
+  height: 4px;
+}
+
+.canvas-table-grip[data-axis="row"]::before {
+  width: 4px;
+  height: 20px;
+}
+
+.canvas-table-grip--corner::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+/* Only the row / column the pointer lines up with (or a grip's own hover). */
+.canvas-table-grip[data-hot="true"]::before {
+  opacity: 1;
+}
+
+.canvas-table-grip:hover::before,
+.canvas-table-grip:focus-visible::before {
+  opacity: 1;
+  background: var(--color-slaq-blue, #1264a3);
+}
+
+.canvas-table-grip:focus-visible {
+  outline: none;
+}
+
+/* The edge +/- clusters show only while the pointer is over the table. */
+.canvas-table-edge {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+[data-testid="canvas-table-controls"][data-active="true"] .canvas-table-edge {
+  opacity: 1;
+}
+
+/*
+ * prosemirror-tables puts `resize-cursor` on the editor root (the same element
+ * as .tiptap / .canvas-doc) while the pointer is over a column border — that is
+ * the hook for the resize cursor, not .tableWrapper.
+ */
+.canvas-doc.resize-cursor,
+.tiptap.resize-cursor,
+.canvas-doc.resize-cursor * {
+  cursor: ew-resize;
   cursor: col-resize;
 }

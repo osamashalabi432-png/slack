@@ -4,8 +4,11 @@ import type { CanvasContent, DatabasePreset, PageDetail } from "@openslaq/shared
 import { pageTitle, UNTITLED_PAGE } from "@openslaq/shared";
 import { CanvasEditor } from "../canvas/CanvasEditor";
 import { PageLinkProvider } from "../canvas/PageLinkNode";
+import { colorFromId } from "../canvas/collab-caret";
+import { PageIconPicker } from "./PageIconPicker";
 import type { PageActions } from "../../hooks/chat/usePages";
 import { useConfirm } from "../ui";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useImageStore } from "../../hooks/useImageStore";
 import { ImageSourceProvider } from "../canvas/CanvasImageNode";
 
@@ -18,7 +21,6 @@ interface PageViewProps {
   onCreateDatabase?: (preset: DatabasePreset) => Promise<string | null>;
 }
 
-const ICONS = ["📄", "📓", "📌", "🚀", "🧪", "🎯", "🗂️", "💡", "🔒", "📊", "🛠️", "🌱"];
 
 /**
  * A page: cover, icon, title, then the body. The title is a plain input rather
@@ -34,6 +36,19 @@ export function PageView({
 }: PageViewProps) {
   const { get, update, favourite: favouritePage, archive, create, pages } = actions;
   const images = useImageStore();
+  const me = useCurrentUser();
+  const collabUser = useMemo(
+    () =>
+      me?.id
+        ? {
+            id: me.id,
+            name: me.displayName || me.primaryEmail || "You",
+            color: colorFromId(me.id),
+            avatarUrl: me.profileImageUrl ?? null,
+          }
+        : null,
+    [me?.id, me?.displayName, me?.primaryEmail, me?.profileImageUrl],
+  );
   const [page, setPage] = useState<PageDetail | null>(null);
   const [title, setTitle] = useState("");
   const [iconOpen, setIconOpen] = useState(false);
@@ -42,6 +57,7 @@ export function PageView({
 
   // Renaming shouldn't hit the server on every keystroke.
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iconButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +94,16 @@ export function PageView({
       renameTimer.current = setTimeout(() => {
         void update(pageId, { title: next });
       }, 500);
+    },
+    [update, pageId],
+  );
+
+  // Persist a metadata change and reflect it locally at once — otherwise the
+  // icon / cover only appears after the next mount (a refresh or a tab bounce).
+  const patchMeta = useCallback(
+    (patch: { icon?: string | null; coverUrl?: string | null }) => {
+      setPage((p) => (p ? { ...p, ...patch } : p));
+      void update(pageId, patch);
     },
     [update, pageId],
   );
@@ -135,7 +161,7 @@ export function PageView({
             type="button"
             aria-label="Remove cover"
             data-testid="page-cover-remove"
-            onClick={() => void update(pageId, { coverUrl: null })}
+            onClick={() => patchMeta({ coverUrl: null })}
             className="absolute top-2 right-2 w-7 h-7 rounded bg-black/50 text-white flex items-center justify-center border-none cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -168,6 +194,7 @@ export function PageView({
         <div className="flex items-center gap-2 mb-2">
           <div className="relative">
             <button
+              ref={iconButtonRef}
               type="button"
               onClick={() => setIconOpen((v) => !v)}
               data-testid="page-icon-button"
@@ -176,37 +203,18 @@ export function PageView({
               {page.icon ?? <Smile className="w-6 h-6 text-muted" />}
             </button>
             {iconOpen && (
-              <div
-                className="absolute z-20 top-11 left-0 p-2 rounded-lg border border-border-default bg-surface shadow-xl grid grid-cols-[repeat(6,2rem)] gap-1"
-                data-testid="page-icon-picker"
-              >
-                {ICONS.map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    aria-label={`Use ${icon} as the icon`}
-                    data-testid={`page-icon-option-${ICONS.indexOf(icon)}`}
-                    onClick={() => {
-                      setIconOpen(false);
-                      void update(pageId, { icon });
-                    }}
-                    className="w-8 h-8 text-lg rounded hover:bg-surface-hover bg-transparent border-none cursor-pointer"
-                  >
-                    {icon}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  data-testid="page-icon-clear"
-                  onClick={() => {
-                    setIconOpen(false);
-                    void update(pageId, { icon: null });
-                  }}
-                  className="col-span-6 mt-1 text-xs text-muted hover:text-primary bg-transparent border-none cursor-pointer py-1"
-                >
-                  Remove icon
-                </button>
-              </div>
+              <PageIconPicker
+                anchorRef={iconButtonRef}
+                onSelect={(emoji) => {
+                  setIconOpen(false);
+                  patchMeta({ icon: emoji });
+                }}
+                onRemove={() => {
+                  setIconOpen(false);
+                  patchMeta({ icon: null });
+                }}
+                onClose={() => setIconOpen(false)}
+              />
             )}
           </div>
 
@@ -237,7 +245,7 @@ export function PageView({
               data-testid="page-cover-add"
               onClick={() => {
                 const url = window.prompt("Cover image URL");
-                if (url) void update(pageId, { coverUrl: url });
+                if (url) patchMeta({ coverUrl: url });
               }}
               className="w-8 h-8 flex items-center justify-center rounded bg-transparent hover:bg-surface-hover border-none cursor-pointer text-muted"
             >
@@ -278,6 +286,7 @@ export function PageView({
               onCreatePage={createSubPage}
               onCreateDatabase={onCreateDatabase}
               onUploadImage={uploadImage}
+              collabUser={collabUser}
               editable
             />
           </ImageSourceProvider>

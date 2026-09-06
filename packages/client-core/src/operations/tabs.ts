@@ -69,6 +69,46 @@ export async function renameTabOp(
   );
 }
 
+/**
+ * Persist a new tab order. Applies optimistically, then reconciles with the
+ * server's authoritative list; on failure it re-reads the real order.
+ */
+export async function reorderTabsOp(
+  deps: OperationDeps,
+  params: { workspaceSlug: string; channelId: string; orderedIds: string[] },
+): Promise<void> {
+  const { api, auth, dispatch, getState } = deps;
+  const { workspaceSlug, channelId, orderedIds } = params;
+
+  const prev = getState().channelTabs[channelId] ?? [];
+  const byId = new Map(prev.map((t) => [t.id as string, t]));
+  const optimistic = orderedIds
+    .map((id, index) => {
+      const tab = byId.get(id);
+      return tab ? { ...tab, position: index } : null;
+    })
+    .filter((t): t is ChannelTab => t !== null);
+
+  if (optimistic.length === prev.length && optimistic.length > 0) {
+    dispatch({ type: "tabs/set", channelId, tabs: optimistic });
+  }
+
+  try {
+    const res = await authorizedRequest(auth, (headers) =>
+      api.api.workspaces[":slug"].channels[":id"].tabs.reorder.$put(
+        { param: { slug: workspaceSlug, id: channelId }, json: { orderedIds } },
+        { headers },
+      ),
+    );
+    if (!res.ok) throw new Error(`Failed to reorder tabs (${res.status})`);
+    const data = (await res.json()) as { tabs: ChannelTab[] };
+    dispatch({ type: "tabs/set", channelId, tabs: data.tabs });
+  } catch (error) {
+    await fetchTabs(deps, { workspaceSlug, channelId }).catch(() => {});
+    throw error;
+  }
+}
+
 export async function saveCanvasOp(
   deps: OperationDeps,
   params: { workspaceSlug: string; channelId: string; tabId: string; content: CanvasContent },

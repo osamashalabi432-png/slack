@@ -11,7 +11,7 @@ import {
   CHANNEL_TAB_TYPES,
 } from "@openslaq/shared";
 import type { CanvasContent, ChannelTab, ChannelTabType, FolderContent, FolderItem } from "@openslaq/shared";
-import { listTabs, getTab, createTab, renameTab, saveCanvasContent, deleteTab } from "./tab-service";
+import { listTabs, getTab, createTab, renameTab, reorderTabs, saveCanvasContent, deleteTab } from "./tab-service";
 import {
   saveFolderItem,
   unsaveFolderItem,
@@ -117,6 +117,23 @@ const renameTabRoute = createRoute({
   responses: {
     200: jsonContent(tabSchema, "Updated tab"),
     404: jsonContent(errorSchema, "Tab not found"),
+  },
+});
+
+const reorderTabsRoute = createRoute({
+  method: "put",
+  path: "/:id/tabs/reorder",
+  tags: ["Channel Tabs"],
+  summary: "Reorder channel tabs",
+  security: BEARER_SECURITY,
+  middleware: [rlMemberManage, resolveChannel, requireChannelMember] as const,
+  request: {
+    params: channelIdParam,
+    body: jsonBody(z.object({ orderedIds: z.array(zChannelTabId()).min(1).max(50) })),
+  },
+  responses: {
+    200: jsonContent(z.object({ tabs: z.array(tabSchema) }), "Tabs in their new order"),
+    400: jsonContent(errorSchema, "orderedIds must be exactly this channel's tabs"),
   },
 });
 
@@ -319,6 +336,19 @@ const app = new OpenAPIHono<WorkspaceMemberEnv>()
     emitToChannel(channel.id, "tab:updated", { tab });
 
     return c.json(tab, 200);
+  })
+  .openapi(reorderTabsRoute, async (c) => {
+    const { channel } = getChannelContext(c);
+    if (channel.isArchived) throw new BadRequestError("Channel is archived");
+
+    const { orderedIds } = c.req.valid("json");
+    const rows = await reorderTabs(channel.id, orderedIds.map(asChannelTabId));
+    if (!rows) throw new BadRequestError("orderedIds must be exactly this channel's tabs");
+
+    const tabs = rows.map(toTabResponse);
+    for (const tab of tabs) emitToChannel(channel.id, "tab:updated", { tab });
+
+    return c.json({ tabs }, 200);
   })
   .openapi(saveContentRoute, async (c) => {
     const { channel, user } = getChannelContext(c);

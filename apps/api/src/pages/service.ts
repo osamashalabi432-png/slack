@@ -5,6 +5,7 @@ import { userGroupMembers } from "../groups/schema";
 import { channelMembers, channels } from "../channels/schema";
 import { workspaceMembers } from "../workspaces/schema";
 import { channelTabs } from "../channels/tab-schema";
+import { syncTabNameForPage } from "../channels/tab-service";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../errors";
 import type { CanvasContent, Page, PageCrumb, PageDetail, PageId, UserId } from "@openslaq/shared";
 import { asPageId, asUserGroupId, asUserId, pageTitle } from "@openslaq/shared";
@@ -305,6 +306,11 @@ export async function updatePage(
   }
 
   await db.update(pages).set(patch).where(eq(pages.id, pageId));
+
+  // A canvas tab is a page — keep the tab's label following the document title.
+  if (patch.title !== undefined) {
+    await syncTabNameForPage(pageId, patch.title);
+  }
 }
 
 /**

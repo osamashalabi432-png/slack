@@ -38,6 +38,7 @@ import { updateHuddleMessage } from "../messages/service";
 import type { HuddleMessageMetadata } from "@openslaq/shared";
 import { webhookDispatcher } from "../bots/webhook-dispatcher";
 import { captureException } from "../sentry";
+import { registerCanvasCollab } from "./canvas-collab";
 
 const socketJwtSchema = z.object({ sub: z.string() });
 
@@ -208,6 +209,8 @@ export function setupSocketHandlers(
 
     // Register event handlers synchronously so they're available immediately,
     // even if the client disconnects before the async init below completes.
+    registerCanvasCollab(socket, userId);
+
     socket.on("channel:join", async ({ channelId }) => {
       const isMember = await isChannelMember(asChannelId(channelId), userId);
       if (!isMember) return;

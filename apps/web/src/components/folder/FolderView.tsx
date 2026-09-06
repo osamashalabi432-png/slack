@@ -18,7 +18,11 @@ import {
   Bookmark,
   Check,
 } from "lucide-react";
+import * as pdfjs from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { Attachment, ChannelTab, FolderContent, FolderItem } from "@openslaq/shared";
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 import {
   fetchCanvasContent,
   fetchSavedItemIds,
@@ -28,6 +32,7 @@ import {
 import { useOperationDeps } from "../../hooks/chat/useOperationDeps";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { requireAccessToken } from "../../lib/auth";
+import { faviconUrl } from "../../lib/favicon";
 import { env } from "../../env";
 import { LoadingState, ErrorState, Button } from "../ui";
 import {
@@ -61,6 +66,124 @@ function iconFor(item: FolderItem) {
   if (type.startsWith("image/")) return <ImageIcon className="w-5 h-5" />;
   if (type.includes("zip") || type.includes("compressed")) return <FileArchive className="w-5 h-5" />;
   return <FileText className="w-5 h-5" />;
+}
+
+function isPdf(item: FolderItem): boolean {
+  return (
+    item.kind === "file" &&
+    ((item.mimeType ?? "") === "application/pdf" || /\.pdf$/i.test(item.name))
+  );
+}
+
+// url -> data URL of page 1 (or null if it couldn't be rendered). Shared across
+// mounts so switching tabs doesn't re-decode the same PDFs.
+const pdfPreviewCache = new Map<string, Promise<string | null>>();
+
+async function renderPdfFirstPage(url: string): Promise<string | null> {
+  const task = pdfjs.getDocument({ url });
+  try {
+    const doc = await task.promise;
+    const page = await doc.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const scale = Math.min(3, 200 / base.width);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null;
+  } finally {
+    void task.destroy();
+  }
+}
+
+function usePdfPreview(url: string): string | null {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!url) {
+      setSrc(null);
+      return;
+    }
+    let cancelled = false;
+    let job = pdfPreviewCache.get(url);
+    if (!job) {
+      job = renderPdfFirstPage(url);
+      pdfPreviewCache.set(url, job);
+    }
+    void job.then((data) => {
+      if (!cancelled) setSrc(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+  return src;
+}
+
+/**
+ * The avatar for a folder row. Images and PDFs preview themselves so a file is
+ * recognisable at a glance; PDFs get a taller, page-shaped frame. Anything else
+ * (and any preview that fails to load) falls back to a type glyph.
+ */
+export function FolderItemThumb({ item }: { item: FolderItem }) {
+  const isImage = item.kind === "file" && (item.mimeType ?? "").startsWith("image/");
+  const pdf = isPdf(item);
+  const [broken, setBroken] = useState(false);
+  const pdfSrc = usePdfPreview(pdf ? item.url : "");
+
+  const linkFavicon = item.kind === "link" ? faviconUrl(item.url, 32) : "";
+  if (linkFavicon && !broken) {
+    return (
+      <span className="shrink-0 w-9 h-9 rounded-md bg-surface-tertiary flex items-center justify-center overflow-hidden">
+        <img
+          src={linkFavicon}
+          alt=""
+          loading="lazy"
+          onError={() => setBroken(true)}
+          data-testid={`folder-thumb-${item.id}`}
+          className="w-5 h-5 object-contain"
+        />
+      </span>
+    );
+  }
+
+  if (isImage && !broken) {
+    return (
+      <img
+        src={item.url}
+        alt=""
+        loading="lazy"
+        onError={() => setBroken(true)}
+        data-testid={`folder-thumb-${item.id}`}
+        className="shrink-0 w-9 h-9 rounded-md object-cover bg-surface-tertiary"
+      />
+    );
+  }
+
+  if (pdf && pdfSrc) {
+    return (
+      <img
+        src={pdfSrc}
+        alt=""
+        data-testid={`folder-thumb-${item.id}`}
+        className="shrink-0 w-10 h-14 rounded-md object-cover object-top border border-border-default bg-white"
+      />
+    );
+  }
+
+  return (
+    <span
+      className={`shrink-0 rounded-md bg-surface-tertiary text-secondary flex items-center justify-center ${
+        pdf ? "w-10 h-14" : "w-9 h-9"
+      }`}
+    >
+      {iconFor(item)}
+    </span>
+  );
 }
 
 function formatSize(bytes: number | null | undefined): string {
@@ -417,9 +540,7 @@ export function FolderView({
                 data-testid={`folder-item-${item.id}`}
                 className="group flex items-center gap-3 rounded-lg border border-border-default bg-surface p-3 hover:border-border-strong transition-colors"
               >
-                <span className="shrink-0 w-9 h-9 rounded-md bg-surface-tertiary text-secondary flex items-center justify-center">
-                  {iconFor(item)}
-                </span>
+                <FolderItemThumb item={item} />
                 <a
                   href={item.url}
                   target="_blank"

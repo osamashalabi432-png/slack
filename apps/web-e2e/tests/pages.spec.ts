@@ -65,7 +65,10 @@ test("an icon set on a page shows on the link pointing at it", async ({ page, te
   await addSubPage(page);
   await page.getByTestId("page-title-input").fill("Child");
   await page.getByTestId("page-icon-button").click();
-  await page.getByTestId("page-icon-option-1").click();
+  const picker = page.getByTestId("page-icon-picker");
+  await expect(picker).toBeVisible();
+  await picker.locator("input").fill("rocket");
+  await picker.locator('button[aria-label*="rocket" i]').first().click();
 
   await page.getByTestId("page-breadcrumbs").locator("button").first().click();
   await expect(page.getByTestId("page-title-input")).toHaveValue("Parent", { timeout: 10_000 });
@@ -73,7 +76,7 @@ test("an icon set on a page shows on the link pointing at it", async ({ page, te
   // The body stores only the id, so the link picks up both the name and icon.
   const link = page.locator('[data-testid^="page-link-"]').first();
   await expect(link).toContainText("Child");
-  await expect(link).toContainText("📓");
+  await expect(link).toContainText("🚀");
 });
 
 test("starring a page, and archiving one that has children", async ({ page, testWorkspace }) => {

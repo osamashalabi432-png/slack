@@ -68,6 +68,22 @@ export default defineConfig(({ mode }) => {
     define: {
       "process.env": "{}",
     },
+    resolve: {
+      // yjs breaks if instantiated from two module copies. Force every import
+      // (ours + the tiptap collab extensions') onto one instance. See yjs/yjs#438.
+      dedupe: ["yjs", "y-protocols"],
+    },
+    optimizeDeps: {
+      // Bundle yjs and every one of its consumers into a single optimized
+      // chunk so they can't end up with separate copies.
+      include: [
+        "yjs",
+        "y-protocols/awareness",
+        "@tiptap/y-tiptap",
+        "@tiptap/extension-collaboration > yjs",
+        "@tiptap/extension-collaboration-caret > yjs",
+      ],
+    },
     server: {
       port: parseInt(`${portPrefix}00`),
       strictPort: true,

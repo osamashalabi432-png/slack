@@ -6,10 +6,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "../ui/dropdown-menu";
+import { faviconUrl } from "../../lib/favicon";
 
-function getFaviconUrl(url: string): string {
-  return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=16`;
-}
+const getFaviconUrl = (url: string) => faviconUrl(url, 16);
 
 interface BookmarksBarProps {
   bookmarks: ChannelBookmark[];

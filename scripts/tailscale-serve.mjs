@@ -55,8 +55,11 @@ if (!status.CertDomains || status.CertDomains.length === 0) {
 }
 
 const prefix = "30";
+// The web dev server moves when its usual port is taken, so it can be named:
+//   OPENSLAQ_WEB_PORT=3005 node scripts/tailscale-serve.mjs
+const webPort = process.env.OPENSLAQ_WEB_PORT ?? `${prefix}00`;
 const routes = [
-  ["443", `${prefix}00`, "web app"],
+  ["443", webPort, "web app"],
   [`${prefix}01`, `${prefix}01`, "API and Socket.IO"],
   [`${prefix}03`, `${prefix}03`, "file storage"],
   [`${prefix}04`, `${prefix}04`, "LiveKit signalling"],
